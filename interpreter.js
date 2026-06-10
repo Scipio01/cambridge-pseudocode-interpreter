@@ -368,6 +368,38 @@ function runLine(line) {
 
 function getValue(value) {
 
+        if (value.startsWith("LENGTH(") && value.endsWith(")")) {
+        let inside = value.replace("LENGTH(", "").slice(0, -1).trim();
+        let text = getValue(inside);
+
+        return text.length;
+    }
+
+        if (value.startsWith("UCASE(") && value.endsWith(")")) {
+        let inside = value.replace("UCASE(", "").slice(0, -1).trim();
+        let text = getValue(inside);
+
+        return String(text).toUpperCase();
+    }
+
+        if (value.startsWith("LCASE(") && value.endsWith(")")) {
+        let inside = value.replace("LCASE(", "").slice(0, -1).trim();
+        let text = getValue(inside);
+
+        return String(text).toLowerCase();
+    }
+
+
+        if (value.startsWith("SUBSTRING(") && value.endsWith(")")) {
+        let inside = value.replace("SUBSTRING(", "").slice(0, -1).trim();
+        let parts = inside.split(",");
+
+        let text = String(getValue(parts[0].trim()));
+        let start = getValue(parts[1].trim());
+        let length = getValue(parts[2].trim());
+
+        return text.substring(start - 1, start - 1 + length);
+    }
 
     if (value.includes(">=")) {
     let parts = value.split(">=");
