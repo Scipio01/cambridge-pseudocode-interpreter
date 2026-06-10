@@ -1,9 +1,11 @@
 let variables = {};
 let lines = [];
 let currentLine = 0;
+let loops = {};
 
 function runCode() {
     variables = {};
+    loops = {};
     document.getElementById("output").textContent = "";
 
     let code = document.getElementById("code").value;
@@ -17,13 +19,12 @@ function runCode() {
     }
 }
 
-
 function runLine(line) {
     if (line === "") return;
 
     if (line === "ELSE") {
-    skipToEndif();
-    return;
+        skipToEndif();
+        return;
     }
 
     if (line === "ENDIF") {
@@ -45,15 +46,46 @@ function runLine(line) {
         return;
     }
 
-    if (line.startsWith("INPUT")) {
-    let variableName = line.replace("INPUT", "").trim();
-    let userInput = prompt("Enter value for " + variableName);
+    if (line.startsWith("FOR")) {
+        let forLine = line.replace("FOR", "").trim();
+        let parts = forLine.split("←");
 
-    variables[variableName] = userInput;
+        let variableName = parts[0].trim();
+        let range = parts[1].split("TO");
 
-    return;
+        let startValue = getValue(range[0].trim());
+        let endValue = getValue(range[1].trim());
+
+        variables[variableName] = startValue;
+
+        loops[variableName] = {
+            startLine: currentLine,
+            endValue: endValue
+        };
+
+        return;
     }
 
+    if (line.startsWith("NEXT")) {
+        let variableName = line.replace("NEXT", "").trim();
+
+        variables[variableName]++;
+
+        if (variables[variableName] <= loops[variableName].endValue) {
+            currentLine = loops[variableName].startLine;
+        }
+
+        return;
+    }
+
+    if (line.startsWith("INPUT")) {
+        let variableName = line.replace("INPUT", "").trim();
+        let userInput = prompt("Enter value for " + variableName);
+
+        variables[variableName] = userInput;
+
+        return;
+    }
 
     if (line.includes("←")) {
         let parts = line.split("←");
@@ -61,13 +93,16 @@ function runLine(line) {
         let value = parts[1].trim();
 
         variables[name] = getValue(value);
+        return;
     }
 
-    else if (line.startsWith("OUTPUT")) {
+    if (line.startsWith("OUTPUT")) {
         let value = line.replace("OUTPUT", "").trim();
         print(getValue(value));
+        return;
     }
 }
+
 
 function getValue(value) {
 
