@@ -30,9 +30,50 @@ function runLine(line) {
 }
 
 function getValue(value) {
-    if (value.startsWith('"') && value.endsWith('"')) {
-        return value.slice(1, -1);
+
+
+    if (value.includes(">=")) {
+    let parts = value.split(">=");
+    let left = getValue(parts[0].trim());
+    let right = getValue(parts[1].trim());
+    return left >= right;
     }
+
+    if (value.includes("<=")) {
+    let parts = value.split("<=");
+    let left = getValue(parts[0].trim());
+    let right = getValue(parts[1].trim());
+    return left <= right;
+    }
+
+    if (value.includes("<>")) {
+    let parts = value.split("<>");
+    let left = getValue(parts[0].trim());
+    let right = getValue(parts[1].trim());
+    return left !== right;
+    }
+
+    if (value.includes("=")) {
+    let parts = value.split("=");
+    let left = getValue(parts[0].trim());
+    let right = getValue(parts[1].trim());
+    return left === right;
+    }
+
+    if (value.includes(">")) {
+        let parts = value.split(">");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left > right;
+    }
+
+    if (value.includes("<")) {
+    let parts = value.split("<");
+    let left = getValue(parts[0].trim());
+    let right = getValue(parts[1].trim());
+    return left < right;
+    }
+
 
     if (value.includes("+")) {
         let parts = value.split("+");
@@ -62,11 +103,15 @@ if (value.includes("/")) {
     return left / right;
 }
 
-    if (!isNaN(value)) {
-        return Number(value);
-    }
+if (value.startsWith('"') && value.endsWith('"')) {
+    return value.slice(1, -1);
+}
 
-    return variables[value];
+if (!isNaN(value)) {
+    return Number(value);
+}
+
+return variables[value];
 }
 
 function print(text) {
