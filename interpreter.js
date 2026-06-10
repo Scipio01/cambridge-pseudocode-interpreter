@@ -41,8 +41,37 @@ function validateProgram() {
 
         if (line.startsWith("FOR")) {
             let forLine = line.replace("FOR", "").trim();
+
+            if (!forLine.includes("←")) {
+                currentLine = i;
+                showError("FOR statement must use ←");
+                return false;
+            }
+
+            if (!forLine.includes("TO")) {
+                currentLine = i;
+                showError("FOR statement must include TO");
+                return false;
+            }
+
             let parts = forLine.split("←");
             let variableName = parts[0].trim();
+
+            if (variableName === "") {
+                currentLine = i;
+                showError("FOR statement needs a variable name");
+                return false;
+            }
+
+            let range = parts[1].split("TO");
+            let startValue = range[0].trim();
+            let endValue = range[1].trim();
+
+            if (startValue === "" || endValue === "") {
+                currentLine = i;
+                showError("FOR statement needs start and end values");
+                return false;
+            }
 
             stack.push({
                 type: "FOR",
@@ -53,6 +82,12 @@ function validateProgram() {
 
         if (line.startsWith("NEXT")) {
             let nextVariable = line.replace("NEXT", "").trim();
+
+            if (nextVariable === "") {
+                currentLine = i;
+                showError("NEXT statement needs a variable name");
+                return false;
+            }
 
             if (stack.length === 0) {
                 currentLine = i;
