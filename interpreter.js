@@ -45,6 +45,16 @@ function runLine(line) {
         return;
     }
 
+    if (line.startsWith("INPUT")) {
+    let variableName = line.replace("INPUT", "").trim();
+    let userInput = prompt("Enter value for " + variableName);
+
+    variables[variableName] = userInput;
+
+    return;
+    }
+
+
     if (line.includes("←")) {
         let parts = line.split("←");
         let name = parts[0].trim();
