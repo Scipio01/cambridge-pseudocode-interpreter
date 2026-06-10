@@ -422,32 +422,30 @@ function runLine(line) {
     }
 }
 
-
 function getValue(value) {
 
-        if (value.startsWith("LENGTH(") && value.endsWith(")")) {
+    if (value.startsWith("LENGTH(") && value.endsWith(")")) {
         let inside = value.replace("LENGTH(", "").slice(0, -1).trim();
         let text = getValue(inside);
 
         return text.length;
     }
 
-        if (value.startsWith("UCASE(") && value.endsWith(")")) {
+    if (value.startsWith("UCASE(") && value.endsWith(")")) {
         let inside = value.replace("UCASE(", "").slice(0, -1).trim();
         let text = getValue(inside);
 
         return String(text).toUpperCase();
     }
 
-        if (value.startsWith("LCASE(") && value.endsWith(")")) {
+    if (value.startsWith("LCASE(") && value.endsWith(")")) {
         let inside = value.replace("LCASE(", "").slice(0, -1).trim();
         let text = getValue(inside);
 
         return String(text).toLowerCase();
     }
 
-
-        if (value.startsWith("SUBSTRING(") && value.endsWith(")")) {
+    if (value.startsWith("SUBSTRING(") && value.endsWith(")")) {
         let inside = value.replace("SUBSTRING(", "").slice(0, -1).trim();
         let parts = inside.split(",");
 
@@ -458,32 +456,42 @@ function getValue(value) {
         return text.substring(start - 1, start - 1 + length);
     }
 
+    if (value.startsWith("RANDOM(") && value.endsWith(")")) {
+        let inside = value.replace("RANDOM(", "").slice(0, -1).trim();
+        let parts = inside.split(",");
+
+        let min = getValue(parts[0].trim());
+        let max = getValue(parts[1].trim());
+
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
     if (value.includes(">=")) {
-    let parts = value.split(">=");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left >= right;
+        let parts = value.split(">=");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left >= right;
     }
 
     if (value.includes("<=")) {
-    let parts = value.split("<=");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left <= right;
+        let parts = value.split("<=");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left <= right;
     }
 
     if (value.includes("<>")) {
-    let parts = value.split("<>");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left !== right;
+        let parts = value.split("<>");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left !== right;
     }
 
     if (value.includes("=")) {
-    let parts = value.split("=");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left === right;
+        let parts = value.split("=");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left === right;
     }
 
     if (value.includes(">")) {
@@ -494,12 +502,11 @@ function getValue(value) {
     }
 
     if (value.includes("<")) {
-    let parts = value.split("<");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left < right;
+        let parts = value.split("<");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left < right;
     }
-
 
     if (value.includes("+")) {
         let parts = value.split("+");
@@ -509,48 +516,49 @@ function getValue(value) {
     }
 
     if (value.includes("-")) {
-    let parts = value.split("-");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left - right;
-}
-
-if (value.includes("*")) {
-    let parts = value.split("*");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left * right;
-}
-
-if (value.includes("/")) {
-    let parts = value.split("/");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-    return left / right;
-}
-
-if (value.startsWith('"') && value.endsWith('"')) {
-    return value.slice(1, -1);
-}
-
-if (!isNaN(value)) {
-    return Number(value);
-}
-
-if (value.includes("[") && value.endsWith("]")) {
-    let arrayName = value.split("[")[0].trim();
-    let indexText = value.split("[")[1].replace("]", "").trim();
-    let index = getValue(indexText);
-
-    if (variables[arrayName] === undefined) {
-        return undefined;
+        let parts = value.split("-");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left - right;
     }
 
-    return variables[arrayName][index];
+    if (value.includes("*")) {
+        let parts = value.split("*");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left * right;
+    }
+
+    if (value.includes("/")) {
+        let parts = value.split("/");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left / right;
+    }
+
+    if (value.startsWith('"') && value.endsWith('"')) {
+        return value.slice(1, -1);
+    }
+
+    if (!isNaN(value)) {
+        return Number(value);
+    }
+
+    if (value.includes("[") && value.endsWith("]")) {
+        let arrayName = value.split("[")[0].trim();
+        let indexText = value.split("[")[1].replace("]", "").trim();
+        let index = getValue(indexText);
+
+        if (variables[arrayName] === undefined) {
+            return undefined;
+        }
+
+        return variables[arrayName][index];
+    }
+
+    return variables[value];
 }
 
-return variables[value];
-}
 
 function skipToEndif() {
     while (currentLine < lines.length) {
