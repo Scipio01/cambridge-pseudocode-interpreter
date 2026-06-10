@@ -10,6 +10,35 @@ function validateProgram() {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
 
+        if (line.startsWith("IF")) {
+            if (!line.endsWith("THEN")) {
+                currentLine = i;
+                showError("IF statement must end with THEN");
+                return false;
+            }
+
+            stack.push({
+                type: "IF",
+                lineNumber: i
+            });
+        }
+
+        if (line === "ENDIF") {
+            if (stack.length === 0) {
+                currentLine = i;
+                showError("ENDIF without matching IF");
+                return false;
+            }
+
+            let lastBlock = stack.pop();
+
+            if (lastBlock.type !== "IF") {
+                currentLine = i;
+                showError("ENDIF does not match IF");
+                return false;
+            }
+        }
+
         if (line.startsWith("FOR")) {
             let forLine = line.replace("FOR", "").trim();
             let parts = forLine.split("←");
@@ -50,7 +79,15 @@ function validateProgram() {
     if (stack.length > 0) {
         let unclosedBlock = stack.pop();
         currentLine = unclosedBlock.lineNumber;
-        showError("NEXT expected");
+
+        if (unclosedBlock.type === "IF") {
+            showError("ENDIF expected");
+        }
+
+        if (unclosedBlock.type === "FOR") {
+            showError("NEXT expected");
+        }
+
         return false;
     }
 
