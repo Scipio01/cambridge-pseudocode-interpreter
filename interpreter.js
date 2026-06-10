@@ -508,6 +508,20 @@ function getValue(value) {
         return left < right;
     }
 
+    if (value.includes(" MOD ")) {
+        let parts = value.split(" MOD ");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return left % right;
+    }
+
+    if (value.includes(" DIV ")) {
+        let parts = value.split(" DIV ");
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+        return Math.floor(left / right);
+    }
+
     if (value.includes("+")) {
         let parts = value.split("+");
         let left = getValue(parts[0].trim());
