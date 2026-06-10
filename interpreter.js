@@ -21,20 +21,29 @@ function runCode() {
 function runLine(line) {
     if (line === "") return;
 
-    if (line.startsWith("IF")) {
-    if (!line.endsWith("THEN")) {
-        showError("IF statement must end with THEN");
+    if (line === "ELSE") {
+    skipToEndif();
+    return;
+    }
+
+    if (line === "ENDIF") {
         return;
     }
 
-    let condition = line.replace("IF", "").replace("THEN", "").trim();
+    if (line.startsWith("IF")) {
+        if (!line.endsWith("THEN")) {
+            showError("IF statement must end with THEN");
+            return;
+        }
 
-    if (getValue(condition) === false) {
-        skipToEndif();
+        let condition = line.replace("IF", "").replace("THEN", "").trim();
+
+        if (getValue(condition) === false) {
+            skipToElseOrEndif();
+        }
+
+        return;
     }
-
-    return;
-}
 
     if (line.includes("←")) {
         let parts = line.split("←");
@@ -145,6 +154,27 @@ function skipToEndif() {
         }
 
         if (lines[currentLine].trim() === "ENDIF") {
+            return;
+        }
+    }
+}
+
+function skipToElseOrEndif() {
+    while (currentLine < lines.length) {
+        currentLine++;
+
+        if (currentLine >= lines.length) {
+            showError("ENDIF expected");
+            return;
+        }
+
+        let line = lines[currentLine].trim();
+
+        if (line === "ELSE") {
+            return;
+        }
+
+        if (line === "ENDIF") {
             return;
         }
     }
