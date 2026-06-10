@@ -140,6 +140,37 @@ function validateProgram() {
                 return false;
             }
         }
+
+        if (line === "REPEAT") {
+            stack.push({
+                type: "REPEAT",
+                lineNumber: i
+            });
+        }
+
+        if (line.startsWith("UNTIL")) {
+            let condition = line.replace("UNTIL", "").trim();
+
+            if (condition === "") {
+                currentLine = i;
+                showError("UNTIL statement needs a condition");
+                return false;
+            }
+
+            if (stack.length === 0) {
+                currentLine = i;
+                showError("UNTIL without matching REPEAT");
+                return false;
+            }
+
+            let lastBlock = stack.pop();
+
+            if (lastBlock.type !== "REPEAT") {
+                currentLine = i;
+                showError("UNTIL does not match REPEAT");
+                return false;
+            }
+        }
     }
 
     if (stack.length > 0) {
@@ -156,6 +187,10 @@ function validateProgram() {
 
         if (unclosedBlock.type === "WHILE") {
             showError("ENDWHILE expected");
+        }
+
+        if (unclosedBlock.type === "REPEAT") {
+            showError("UNTIL expected");
         }
 
         return false;
@@ -241,6 +276,20 @@ function runLine(line) {
 
                 depth--;
             }
+        }
+
+        return;
+    }
+
+    if (line === "REPEAT") {
+        return;
+    }
+
+    if (line.startsWith("UNTIL")) {
+        let condition = line.replace("UNTIL", "").trim();
+
+        if (getValue(condition) === false) {
+            jumpBackToRepeat();
         }
 
         return;
@@ -446,6 +495,31 @@ function skipToEndwhile() {
         }
     }
 }
+
+
+function jumpBackToRepeat() {
+    let depth = 0;
+
+    while (currentLine >= 0) {
+        currentLine--;
+
+        let previousLine = lines[currentLine].trim();
+
+        if (previousLine.startsWith("UNTIL")) {
+            depth++;
+        }
+
+        if (previousLine === "REPEAT") {
+            if (depth === 0) {
+                currentLine--;
+                return;
+            }
+
+            depth--;
+        }
+    }
+}
+
 
 
 function showError(message) {
