@@ -1,19 +1,40 @@
 let variables = {};
+let lines = [];
+let currentLine = 0;
 
 function runCode() {
     variables = {};
     document.getElementById("output").textContent = "";
 
     let code = document.getElementById("code").value;
-    let lines = code.split("\n");
+    lines = code.split("\n");
 
-    for (let line of lines) {
-        runLine(line.trim());
+    currentLine = 0;
+
+    while (currentLine < lines.length) {
+        runLine(lines[currentLine].trim());
+        currentLine++;
     }
 }
 
+
 function runLine(line) {
     if (line === "") return;
+
+    if (line.startsWith("IF")) {
+    if (!line.endsWith("THEN")) {
+        showError("IF statement must end with THEN");
+        return;
+    }
+
+    let condition = line.replace("IF", "").replace("THEN", "").trim();
+
+    if (getValue(condition) === false) {
+        skipToEndif();
+    }
+
+    return;
+}
 
     if (line.includes("←")) {
         let parts = line.split("←");
@@ -112,6 +133,26 @@ if (!isNaN(value)) {
 }
 
 return variables[value];
+}
+
+function skipToEndif() {
+    while (currentLine < lines.length) {
+        currentLine++;
+
+        if (currentLine >= lines.length) {
+            showError("ENDIF expected");
+            return;
+        }
+
+        if (lines[currentLine].trim() === "ENDIF") {
+            return;
+        }
+    }
+}
+
+function showError(message) {
+    document.getElementById("output").textContent +=
+        "Error on line " + (currentLine + 1) + ": " + message + "\n";
 }
 
 function print(text) {
