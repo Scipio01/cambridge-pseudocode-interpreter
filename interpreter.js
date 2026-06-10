@@ -10,6 +10,59 @@ function validateProgram() {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
 
+        if (line.startsWith("DECLARE")) {
+            let declaration = line.replace("DECLARE", "").trim();
+
+            if (declaration === "") {
+                currentLine = i;
+                showError("DECLARE statement needs a variable name");
+                return false;
+            }
+
+            if (!declaration.includes(":")) {
+                currentLine = i;
+                showError("DECLARE statement must include :");
+                return false;
+            }
+
+            let colonPos = declaration.indexOf(":");
+
+            let variableName = declaration.substring(0, colonPos).trim();
+            let dataType = declaration.substring(colonPos + 1).trim();
+
+            if (variableName === "") {
+                currentLine = i;
+                showError("DECLARE statement needs a variable name");
+                return false;
+            }
+
+            if (dataType === "") {
+                currentLine = i;
+                showError("DECLARE statement needs a data type");
+                return false;
+            }
+
+            if (dataType.includes("ARRAY")) {
+                if (!dataType.includes("[")) {
+                    currentLine = i;
+                    showError("ARRAY declaration must include [");
+                    return false;
+                }
+
+                if (!dataType.includes("]")) {
+                    currentLine = i;
+                    showError("ARRAY declaration must include ]");
+                    return false;
+                }
+
+                if (!dataType.includes("OF")) {
+                    currentLine = i;
+                    showError("ARRAY declaration must include OF");
+                    return false;
+                }
+            }
+        }
+
         if (line.startsWith("IF")) {
             if (!line.endsWith("THEN")) {
                 currentLine = i;
@@ -221,6 +274,10 @@ function runCode() {
 
 function runLine(line) {
     if (line === "") return;
+
+    if (line.startsWith("DECLARE")) {
+    return;
+    }
 
     if (line === "ELSE") {
         skipToEndif();
@@ -586,4 +643,22 @@ function showError(message) {
 
 function print(text) {
     document.getElementById("output").textContent += text + "\n";
+}
+
+
+function insertArrow() {
+    let codeBox = document.getElementById("code");
+
+    let start = codeBox.selectionStart;
+    let end = codeBox.selectionEnd;
+
+    codeBox.value =
+        codeBox.value.substring(0, start) +
+        " ← " +
+        codeBox.value.substring(end);
+
+    codeBox.focus();
+
+    codeBox.selectionStart = start + 3;
+    codeBox.selectionEnd = start + 3;
 }
