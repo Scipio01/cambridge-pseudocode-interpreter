@@ -109,6 +109,37 @@ function validateProgram() {
                 return false;
             }
         }
+
+        if (line.startsWith("WHILE")) {
+            let condition = line.replace("WHILE", "").trim();
+
+            if (condition === "") {
+                currentLine = i;
+                showError("WHILE statement needs a condition");
+                return false;
+            }
+
+            stack.push({
+                type: "WHILE",
+                lineNumber: i
+            });
+        }
+
+        if (line === "ENDWHILE") {
+            if (stack.length === 0) {
+                currentLine = i;
+                showError("ENDWHILE without matching WHILE");
+                return false;
+            }
+
+            let lastBlock = stack.pop();
+
+            if (lastBlock.type !== "WHILE") {
+                currentLine = i;
+                showError("ENDWHILE does not match WHILE");
+                return false;
+            }
+        }
     }
 
     if (stack.length > 0) {
@@ -121,6 +152,10 @@ function validateProgram() {
 
         if (unclosedBlock.type === "FOR") {
             showError("NEXT expected");
+        }
+
+        if (unclosedBlock.type === "WHILE") {
+            showError("ENDWHILE expected");
         }
 
         return false;
@@ -171,6 +206,41 @@ function runLine(line) {
 
         if (getValue(condition) === false) {
             skipToElseOrEndif();
+        }
+
+        return;
+    }
+
+    if (line.startsWith("WHILE")) {
+        let condition = line.replace("WHILE", "").trim();
+
+        if (getValue(condition) === false) {
+            skipToEndwhile();
+        }
+
+        return;
+    }
+
+    if (line === "ENDWHILE") {
+        let depth = 0;
+
+        while (currentLine >= 0) {
+            currentLine--;
+
+            let previousLine = lines[currentLine].trim();
+
+            if (previousLine === "ENDWHILE") {
+                depth++;
+            }
+
+            if (previousLine.startsWith("WHILE")) {
+                if (depth === 0) {
+                    currentLine--;
+                    return;
+                }
+
+                depth--;
+            }
         }
 
         return;
@@ -354,6 +424,29 @@ function skipToElseOrEndif() {
         }
     }
 }
+
+function skipToEndwhile() {
+    let depth = 0;
+
+    while (currentLine < lines.length) {
+        currentLine++;
+
+        let line = lines[currentLine].trim();
+
+        if (line.startsWith("WHILE")) {
+            depth++;
+        }
+
+        if (line === "ENDWHILE") {
+            if (depth === 0) {
+                return;
+            }
+
+            depth--;
+        }
+    }
+}
+
 
 function showError(message) {
     document.getElementById("output").textContent +=
