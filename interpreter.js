@@ -337,12 +337,25 @@ function runLine(line) {
     }
 
     if (line.includes("←")) {
-        let parts = line.split("←");
-        let name = parts[0].trim();
-        let value = parts[1].trim();
+    let parts = line.split("←");
+    let name = parts[0].trim();
+    let value = parts[1].trim();
 
-        variables[name] = getValue(value);
+    if (name.includes("[") && name.endsWith("]")) {
+        let arrayName = name.split("[")[0].trim();
+        let indexText = name.split("[")[1].replace("]", "").trim();
+        let index = getValue(indexText);
+
+        if (variables[arrayName] === undefined) {
+            variables[arrayName] = {};
+        }
+
+        variables[arrayName][index] = getValue(value);
         return;
+    }
+
+    variables[name] = getValue(value);
+    return;
     }
 
     if (line.startsWith("OUTPUT")) {
@@ -433,6 +446,18 @@ if (value.startsWith('"') && value.endsWith('"')) {
 
 if (!isNaN(value)) {
     return Number(value);
+}
+
+if (value.includes("[") && value.endsWith("]")) {
+    let arrayName = value.split("[")[0].trim();
+    let indexText = value.split("[")[1].replace("]", "").trim();
+    let index = getValue(indexText);
+
+    if (variables[arrayName] === undefined) {
+        return undefined;
+    }
+
+    return variables[arrayName][index];
 }
 
 return variables[value];
