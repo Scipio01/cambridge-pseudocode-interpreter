@@ -3,6 +3,60 @@ let lines = [];
 let currentLine = 0;
 let loops = {};
 
+
+function validateProgram() {
+    let stack = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+
+        if (line.startsWith("FOR")) {
+            let forLine = line.replace("FOR", "").trim();
+            let parts = forLine.split("←");
+            let variableName = parts[0].trim();
+
+            stack.push({
+                type: "FOR",
+                variableName: variableName,
+                lineNumber: i
+            });
+        }
+
+        if (line.startsWith("NEXT")) {
+            let nextVariable = line.replace("NEXT", "").trim();
+
+            if (stack.length === 0) {
+                currentLine = i;
+                showError("NEXT without matching FOR");
+                return false;
+            }
+
+            let lastBlock = stack.pop();
+
+            if (lastBlock.type !== "FOR") {
+                currentLine = i;
+                showError("NEXT does not match FOR");
+                return false;
+            }
+
+            if (lastBlock.variableName !== nextVariable) {
+                currentLine = i;
+                showError("NEXT variable does not match FOR variable");
+                return false;
+            }
+        }
+    }
+
+    if (stack.length > 0) {
+        let unclosedBlock = stack.pop();
+        currentLine = unclosedBlock.lineNumber;
+        showError("NEXT expected");
+        return false;
+    }
+
+    return true;
+}
+
 function runCode() {
     variables = {};
     loops = {};
@@ -10,6 +64,10 @@ function runCode() {
 
     let code = document.getElementById("code").value;
     lines = code.split("\n");
+
+    if (!validateProgram()) {
+    return;
+    }
 
     currentLine = 0;
 
