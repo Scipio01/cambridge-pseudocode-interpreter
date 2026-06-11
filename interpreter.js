@@ -252,16 +252,20 @@ function validateProgram() {
     return true;
 }
 
+
 function runCode() {
     variables = {};
     loops = {};
     document.getElementById("output").textContent = "";
 
     let code = document.getElementById("code").value;
-    lines = code.split("\n");
+
+    lines = code.split("\n").map(function(line) {
+        return line.split("//")[0];
+    });
 
     if (!validateProgram()) {
-    return;
+        return;
     }
 
     currentLine = 0;
@@ -271,6 +275,7 @@ function runCode() {
         currentLine++;
     }
 }
+
 
 function runLine(line) {
     if (line === "") return;
@@ -464,6 +469,13 @@ function getValue(value) {
         let max = getValue(parts[1].trim());
 
         return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    if (value.startsWith("ROUND(") && value.endsWith(")")) {
+        let inside = value.replace("ROUND(", "").slice(0, -1).trim();
+        let number = getValue(inside);
+
+        return Math.round(number);
     }
 
     if (value.includes(">=")) {
