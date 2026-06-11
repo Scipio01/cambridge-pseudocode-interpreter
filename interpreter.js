@@ -436,6 +436,30 @@ function runLine(line) {
 
 function getValue(value) {
 
+    if (value.includes(" OR ")) {
+        let parts = value.split(" OR ");
+
+        for (let i = 0; i < parts.length; i++) {
+            if (getValue(parts[i].trim()) === true) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    if (value.includes(" AND ")) {
+        let parts = value.split(" AND ");
+
+        for (let i = 0; i < parts.length; i++) {
+            if (getValue(parts[i].trim()) === false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     if (value.startsWith("LENGTH(") && value.endsWith(")")) {
         let inside = value.replace("LENGTH(", "").slice(0, -1).trim();
         let text = getValue(inside);
