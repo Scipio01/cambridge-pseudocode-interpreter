@@ -390,12 +390,16 @@ function runLine(line) {
     }
 
     if (line.startsWith("INPUT")) {
-        let variableName = line.replace("INPUT", "").trim();
-        let userInput = prompt("Enter value for " + variableName);
+    let variableName = line.replace("INPUT", "").trim();
+    let userInput = prompt("Enter value for " + variableName);
 
+    if (!isNaN(userInput)) {
+        variables[variableName] = Number(userInput);
+    } else {
         variables[variableName] = userInput;
+    }
 
-        return;
+    return;
     }
 
     if (line.includes("←")) {
@@ -406,14 +410,29 @@ function runLine(line) {
         if (name.includes("[") && name.endsWith("]")) {
             let arrayName = name.split("[")[0].trim();
             let indexText = name.split("[")[1].replace("]", "").trim();
-            let index = getValue(indexText);
+            let indexes = indexText.split(",");
 
             if (variables[arrayName] === undefined) {
                 variables[arrayName] = {};
             }
 
-            variables[arrayName][index] = getValue(value);
-            return;
+            if (indexes.length === 1) {
+                let index = getValue(indexes[0].trim());
+                variables[arrayName][index] = getValue(value);
+                return;
+            }
+
+            if (indexes.length === 2) {
+                let row = getValue(indexes[0].trim());
+                let column = getValue(indexes[1].trim());
+
+                if (variables[arrayName][row] === undefined) {
+                    variables[arrayName][row] = {};
+                }
+
+                variables[arrayName][row][column] = getValue(value);
+                return;
+            }
         }
 
         variables[name] = getValue(value);
@@ -422,7 +441,7 @@ function runLine(line) {
 
     if (line.startsWith("OUTPUT")) {
         let outputText = line.replace("OUTPUT", "").trim();
-        let parts = outputText.split(",");
+        let parts = splitByCommas(outputText);
         let result = "";
 
         for (let i = 0; i < parts.length; i++) {
@@ -604,13 +623,27 @@ function getValue(value) {
     if (value.includes("[") && value.endsWith("]")) {
         let arrayName = value.split("[")[0].trim();
         let indexText = value.split("[")[1].replace("]", "").trim();
-        let index = getValue(indexText);
+        let indexes = indexText.split(",");
 
         if (variables[arrayName] === undefined) {
             return undefined;
         }
 
-        return variables[arrayName][index];
+        if (indexes.length === 1) {
+            let index = getValue(indexes[0].trim());
+            return variables[arrayName][index];
+        }
+
+        if (indexes.length === 2) {
+            let row = getValue(indexes[0].trim());
+            let column = getValue(indexes[1].trim());
+
+            if (variables[arrayName][row] === undefined) {
+                return undefined;
+            }
+
+            return variables[arrayName][row][column];
+        }
     }
 
     return variables[value];
@@ -699,7 +732,38 @@ function jumpBackToRepeat() {
     }
 }
 
+function splitByCommas(text) {
+    let parts = [];
+    let current = "";
+    let bracketDepth = 0;
+    let insideString = false;
 
+    for (let i = 0; i < text.length; i++) {
+        let char = text[i];
+
+        if (char === '"') {
+            insideString = !insideString;
+        }
+
+        if (char === "[" && !insideString) {
+            bracketDepth++;
+        }
+
+        if (char === "]" && !insideString) {
+            bracketDepth--;
+        }
+
+        if (char === "," && bracketDepth === 0 && !insideString) {
+            parts.push(current.trim());
+            current = "";
+        } else {
+            current += char;
+        }
+    }
+
+    parts.push(current.trim());
+    return parts;
+}
 
 function showError(message) {
     document.getElementById("output").textContent +=
