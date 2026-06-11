@@ -281,7 +281,7 @@ function runLine(line) {
     if (line === "") return;
 
     if (line.startsWith("DECLARE")) {
-    return;
+        return;
     }
 
     if (line === "ELSE") {
@@ -399,30 +399,37 @@ function runLine(line) {
     }
 
     if (line.includes("←")) {
-    let parts = line.split("←");
-    let name = parts[0].trim();
-    let value = parts[1].trim();
+        let parts = line.split("←");
+        let name = parts[0].trim();
+        let value = parts[1].trim();
 
-    if (name.includes("[") && name.endsWith("]")) {
-        let arrayName = name.split("[")[0].trim();
-        let indexText = name.split("[")[1].replace("]", "").trim();
-        let index = getValue(indexText);
+        if (name.includes("[") && name.endsWith("]")) {
+            let arrayName = name.split("[")[0].trim();
+            let indexText = name.split("[")[1].replace("]", "").trim();
+            let index = getValue(indexText);
 
-        if (variables[arrayName] === undefined) {
-            variables[arrayName] = {};
+            if (variables[arrayName] === undefined) {
+                variables[arrayName] = {};
+            }
+
+            variables[arrayName][index] = getValue(value);
+            return;
         }
 
-        variables[arrayName][index] = getValue(value);
+        variables[name] = getValue(value);
         return;
     }
 
-    variables[name] = getValue(value);
-    return;
-    }
-
     if (line.startsWith("OUTPUT")) {
-        let value = line.replace("OUTPUT", "").trim();
-        print(getValue(value));
+        let outputText = line.replace("OUTPUT", "").trim();
+        let parts = outputText.split(",");
+        let result = "";
+
+        for (let i = 0; i < parts.length; i++) {
+            result += getValue(parts[i].trim());
+        }
+
+        print(result);
         return;
     }
 }
