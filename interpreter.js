@@ -3,7 +3,7 @@ let lines = [];
 let currentLine = 0;
 let loops = {};
 let procedures = {};
-
+let callStack = [];
 
 function validateProgram() {
     let stack = [];
@@ -321,7 +321,21 @@ function runLine(line) {
     }
 
     if (line === "ENDPROCEDURE") {
+        if (callStack.length > 0) {
+            currentLine = callStack.pop();
+        }
+
         return;
+    }
+
+    if (line.endsWith("()")) {
+        let procedureName = line.replace("()", "").trim();
+
+        if (procedures[procedureName] !== undefined) {
+            callStack.push(currentLine);
+            currentLine = procedures[procedureName].startLine;
+            return;
+        }
     }
 
     if (line === "ELSE") {
