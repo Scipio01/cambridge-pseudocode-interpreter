@@ -271,28 +271,33 @@ function runCode() {
         let line = lines[i].trim();
 
         if (line.startsWith("PROCEDURE")) {
-            let procedureHeader = line.replace("PROCEDURE", "").trim();
-            let procedureName = procedureHeader;
-            let parameterName = null;
+        let procedureHeader = line.replace("PROCEDURE", "").trim();
+        let procedureName = procedureHeader;
+        let parameterNames = [];
 
-            if (procedureHeader.includes("(")) {
-                procedureName = procedureHeader.split("(")[0].trim();
+        if (procedureHeader.includes("(")) {
+            procedureName = procedureHeader.split("(")[0].trim();
 
-                let parameterText = procedureHeader
-                    .split("(")[1]
-                    .replace(")", "")
-                    .trim();
+            let parameterText = procedureHeader
+                .split("(")[1]
+                .replace(")", "")
+                .trim();
 
-                if (parameterText !== "") {
-                    parameterName = parameterText.split(":")[0].trim();
+            if (parameterText !== "") {
+                let parameterParts = splitByCommas(parameterText);
+
+                for (let p = 0; p < parameterParts.length; p++) {
+                    let parameterName = parameterParts[p].split(":")[0].trim();
+                    parameterNames.push(parameterName);
                 }
             }
+        }
 
-            procedures[procedureName] = {
-                startLine: i,
-                endLine: null,
-                parameterName: parameterName
-            };
+        procedures[procedureName] = {
+            startLine: i,
+            endLine: null,
+            parameterNames: parameterNames
+        };
         }
 
         if (line === "ENDPROCEDURE") {
@@ -348,8 +353,17 @@ function runLine(line) {
         if (procedures[procedureName] !== undefined) {
             callStack.push(currentLine);
 
-            if (procedures[procedureName].parameterName !== null) {
-                variables[procedures[procedureName].parameterName] = getValue(argumentText);
+            let argumentsList = [];
+
+            if (argumentText !== "") {
+                argumentsList = splitByCommas(argumentText);
+            }
+
+            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
+                let parameterName = procedures[procedureName].parameterNames[i];
+                let argumentValue = getValue(argumentsList[i].trim());
+
+                variables[parameterName] = argumentValue;
             }
 
             currentLine = procedures[procedureName].startLine;
