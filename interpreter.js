@@ -2,6 +2,7 @@ let variables = {};
 let lines = [];
 let currentLine = 0;
 let loops = {};
+let procedures = {};
 
 
 function validateProgram() {
@@ -256,6 +257,7 @@ function validateProgram() {
 function runCode() {
     variables = {};
     loops = {};
+    procedures = {};
     document.getElementById("output").textContent = "";
 
     let code = document.getElementById("code").value;
@@ -263,6 +265,30 @@ function runCode() {
     lines = code.split("\n").map(function(line) {
         return line.split("//")[0];
     });
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+
+        if (line.startsWith("PROCEDURE")) {
+            let procedureName = line.replace("PROCEDURE", "").trim();
+
+            if (procedureName.includes("(")) {
+                procedureName = procedureName.split("(")[0].trim();
+            }
+
+            procedures[procedureName] = {
+                startLine: i,
+                endLine: null
+            };
+        }
+
+        if (line === "ENDPROCEDURE") {
+            let procedureNames = Object.keys(procedures);
+            let lastProcedureName = procedureNames[procedureNames.length - 1];
+
+            procedures[lastProcedureName].endLine = i;
+        }
+    }
 
     if (!validateProgram()) {
         return;
@@ -276,11 +302,25 @@ function runCode() {
     }
 }
 
-
 function runLine(line) {
     if (line === "") return;
 
     if (line.startsWith("DECLARE")) {
+        return;
+    }
+
+    if (line.startsWith("PROCEDURE")) {
+        let procedureName = line.replace("PROCEDURE", "").trim();
+
+        if (procedureName.includes("(")) {
+            procedureName = procedureName.split("(")[0].trim();
+        }
+
+        currentLine = procedures[procedureName].endLine;
+        return;
+    }
+
+    if (line === "ENDPROCEDURE") {
         return;
     }
 
@@ -390,16 +430,16 @@ function runLine(line) {
     }
 
     if (line.startsWith("INPUT")) {
-    let variableName = line.replace("INPUT", "").trim();
-    let userInput = prompt("Enter value for " + variableName);
+        let variableName = line.replace("INPUT", "").trim();
+        let userInput = prompt("Enter value for " + variableName);
 
-    if (!isNaN(userInput)) {
-        variables[variableName] = Number(userInput);
-    } else {
-        variables[variableName] = userInput;
-    }
+        if (!isNaN(userInput)) {
+            variables[variableName] = Number(userInput);
+        } else {
+            variables[variableName] = userInput;
+        }
 
-    return;
+        return;
     }
 
     if (line.includes("←")) {
