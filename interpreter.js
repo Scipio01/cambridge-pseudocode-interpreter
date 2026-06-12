@@ -258,6 +258,7 @@ function runCode() {
     variables = {};
     loops = {};
     procedures = {};
+    callStack = [];
     document.getElementById("output").textContent = "";
 
     let code = document.getElementById("code").value;
@@ -270,15 +271,27 @@ function runCode() {
         let line = lines[i].trim();
 
         if (line.startsWith("PROCEDURE")) {
-            let procedureName = line.replace("PROCEDURE", "").trim();
+            let procedureHeader = line.replace("PROCEDURE", "").trim();
+            let procedureName = procedureHeader;
+            let parameterName = null;
 
-            if (procedureName.includes("(")) {
-                procedureName = procedureName.split("(")[0].trim();
+            if (procedureHeader.includes("(")) {
+                procedureName = procedureHeader.split("(")[0].trim();
+
+                let parameterText = procedureHeader
+                    .split("(")[1]
+                    .replace(")", "")
+                    .trim();
+
+                if (parameterText !== "") {
+                    parameterName = parameterText.split(":")[0].trim();
+                }
             }
 
             procedures[procedureName] = {
                 startLine: i,
-                endLine: null
+                endLine: null,
+                parameterName: parameterName
             };
         }
 
@@ -328,11 +341,17 @@ function runLine(line) {
         return;
     }
 
-    if (line.endsWith("()")) {
-        let procedureName = line.replace("()", "").trim();
+    if (line.endsWith(")")) {
+        let procedureName = line.split("(")[0].trim();
+        let argumentText = line.split("(")[1].replace(")", "").trim();
 
         if (procedures[procedureName] !== undefined) {
             callStack.push(currentLine);
+
+            if (procedures[procedureName].parameterName !== null) {
+                variables[procedures[procedureName].parameterName] = getValue(argumentText);
+            }
+
             currentLine = procedures[procedureName].startLine;
             return;
         }
@@ -509,6 +528,10 @@ function runLine(line) {
 
 function getValue(value) {
 
+    if (value.startsWith('"') && value.endsWith('"')) {
+        return value.slice(1, -1);
+    }
+
     if (value.includes(" OR ")) {
         let parts = value.split(" OR ");
 
@@ -664,10 +687,6 @@ function getValue(value) {
         let left = getValue(parts[0].trim());
         let right = getValue(parts[1].trim());
         return left / right;
-    }
-
-    if (value.startsWith('"') && value.endsWith('"')) {
-        return value.slice(1, -1);
     }
 
     if (!isNaN(value)) {

@@ -44,3 +44,28 @@
 ## Version 1.0
 - [x] Syntax Checking
 - [ ] Trace Mode
+
+
+
+## Still to do
+
+- [ ] Multiple procedure parameters
+- [ ] CASE OF / ENDCASE
+- [ ] TRUE / FALSE as Boolean constants
+- [ ] NOT
+- [ ] Local variables inside procedures
+- [ ] Typed variables from DECLARE
+- [ ] Multiple variable declarations on one line
+- [ ] Functions / RETURN
+- [ ] File handling
+- [ ] Trace mode
+- [ ] Better unsupported-syntax errors
+
+## Come back to later
+
+- [ ] Full type handling from DECLARE
+- [ ] INPUT based on declared type
+- [ ] Proper local scope for procedures
+- [ ] Array bounds checking
+- [ ] Pre-set array/list literals
+- [ ] Better expression parsing
