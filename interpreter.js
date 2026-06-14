@@ -3,6 +3,7 @@ let lines = [];
 let currentLine = 0;
 let loops = {};
 let procedures = {};
+let functions = {};
 let callStack = [];
 
 function validateProgram() {
@@ -258,6 +259,7 @@ function runCode() {
     variables = {};
     loops = {};
     procedures = {};
+    functions = {};
     callStack = [];
     document.getElementById("output").textContent = "";
 
@@ -271,16 +273,50 @@ function runCode() {
         let line = lines[i].trim();
 
         if (line.startsWith("PROCEDURE")) {
-        let procedureHeader = line.replace("PROCEDURE", "").trim();
-        let procedureName = procedureHeader;
-        let parameterNames = [];
+            let procedureHeader = line.replace("PROCEDURE", "").trim();
+            let procedureName = procedureHeader;
+            let parameterNames = [];
 
-        if (procedureHeader.includes("(")) {
-            procedureName = procedureHeader.split("(")[0].trim();
+            if (procedureHeader.includes("(")) {
+                procedureName = procedureHeader.split("(")[0].trim();
 
-            let parameterText = procedureHeader
+                let parameterText = procedureHeader
+                    .split("(")[1]
+                    .replace(")", "")
+                    .trim();
+
+                if (parameterText !== "") {
+                    let parameterParts = splitByCommas(parameterText);
+
+                    for (let p = 0; p < parameterParts.length; p++) {
+                        let parameterName = parameterParts[p].split(":")[0].trim();
+                        parameterNames.push(parameterName);
+                    }
+                }
+            }
+
+            procedures[procedureName] = {
+                startLine: i,
+                endLine: null,
+                parameterNames: parameterNames
+            };
+        }
+
+        if (line === "ENDPROCEDURE") {
+            let procedureNames = Object.keys(procedures);
+            let lastProcedureName = procedureNames[procedureNames.length - 1];
+
+            procedures[lastProcedureName].endLine = i;
+        }
+
+        if (line.startsWith("FUNCTION")) {
+            let functionHeader = line.replace("FUNCTION", "").trim();
+            let functionName = functionHeader.split("(")[0].trim();
+            let parameterNames = [];
+
+            let parameterText = functionHeader
                 .split("(")[1]
-                .replace(")", "")
+                .split(")")[0]
                 .trim();
 
             if (parameterText !== "") {
@@ -291,20 +327,19 @@ function runCode() {
                     parameterNames.push(parameterName);
                 }
             }
+
+            functions[functionName] = {
+                startLine: i,
+                endLine: null,
+                parameterNames: parameterNames
+            };
         }
 
-        procedures[procedureName] = {
-            startLine: i,
-            endLine: null,
-            parameterNames: parameterNames
-        };
-        }
+        if (line === "ENDFUNCTION") {
+            let functionNames = Object.keys(functions);
+            let lastFunctionName = functionNames[functionNames.length - 1];
 
-        if (line === "ENDPROCEDURE") {
-            let procedureNames = Object.keys(procedures);
-            let lastProcedureName = procedureNames[procedureNames.length - 1];
-
-            procedures[lastProcedureName].endLine = i;
+            functions[lastFunctionName].endLine = i;
         }
     }
 
@@ -320,10 +355,30 @@ function runCode() {
     }
 }
 
+
 function runLine(line) {
     if (line === "") return;
 
     if (line.startsWith("DECLARE")) {
+        return;
+    }
+
+    if (line.startsWith("FUNCTION")) {
+        let functionName = line.replace("FUNCTION", "").trim();
+
+        if (functionName.includes("(")) {
+            functionName = functionName.split("(")[0].trim();
+        }
+
+        currentLine = functions[functionName].endLine;
+        return;
+    }
+
+    if (line === "ENDFUNCTION") {
+        return;
+    }
+
+    if (line.startsWith("RETURN")) {
         return;
     }
 
@@ -522,7 +577,14 @@ function runLine(line) {
             }
         }
 
-        variables[name] = getValue(value);
+        //variables[name] = getValue(value);
+        let result = getValue(value);
+
+        console.log("ASSIGNING:", name);
+        console.log("VALUE TEXT:", value);
+        console.log("RESULT:", result);
+
+        variables[name] = result;
         return;
     }
 
@@ -539,6 +601,34 @@ function runLine(line) {
         return;
     }
 }
+
+
+function runFunction(functionName, argumentsList) {
+    let savedVariables = {...variables};
+
+    for (let i = 0; i < functions[functionName].parameterNames.length; i++) {
+        let parameterName = functions[functionName].parameterNames[i];
+        let argumentValue = getValue(argumentsList[i].trim());
+
+        variables[parameterName] = argumentValue;
+    }
+
+    for (let lineNumber = functions[functionName].startLine + 1; lineNumber < functions[functionName].endLine; lineNumber++) {
+        let line = lines[lineNumber].trim();
+
+        if (line.startsWith("RETURN")) {
+            let returnExpression = line.replace("RETURN", "").trim();
+            let returnValue = getValue(returnExpression);
+
+            variables = savedVariables;
+            return returnValue;
+        }
+    }
+
+    variables = savedVariables;
+    return undefined;
+}
+
 
 function getValue(value) {
 
@@ -625,6 +715,21 @@ function getValue(value) {
         let number = getValue(inside);
 
         return Math.round(number);
+    }
+
+    if (value.endsWith(")") && value.includes("(")) {
+        let functionName = value.split("(")[0].trim();
+        let argumentText = value.split("(")[1].replace(")", "").trim();
+
+        if (functions[functionName] !== undefined) {
+            let argumentsList = [];
+
+            if (argumentText !== "") {
+                argumentsList = splitByCommas(argumentText);
+            }
+
+            return runFunction(functionName, argumentsList);
+        }
     }
 
     if (value.includes(">=")) {
