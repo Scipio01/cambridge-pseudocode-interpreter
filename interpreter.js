@@ -542,6 +542,14 @@ function runLine(line) {
 
 function getValue(value) {
 
+    if (value === "TRUE") {
+        return true;
+    }
+
+    if (value === "FALSE") {
+        return false;
+    }
+
     if (value.startsWith('"') && value.endsWith('"')) {
         return value.slice(1, -1);
     }
