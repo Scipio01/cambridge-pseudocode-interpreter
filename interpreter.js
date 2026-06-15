@@ -718,8 +718,8 @@ function getValue(value) {
     }
 
     if (value.endsWith(")") && value.includes("(")) {
-        let functionName = value.split("(")[0].trim();
-        let argumentText = value.split("(")[1].replace(")", "").trim();
+        let functionName = value.substring(0, value.indexOf("(")).trim();
+        let argumentText = getBracketContents(value);
 
         if (functions[functionName] !== undefined) {
             let argumentsList = [];
@@ -936,6 +936,7 @@ function splitByCommas(text) {
     let parts = [];
     let current = "";
     let bracketDepth = 0;
+    let squareBracketDepth = 0;
     let insideString = false;
 
     for (let i = 0; i < text.length; i++) {
@@ -945,15 +946,28 @@ function splitByCommas(text) {
             insideString = !insideString;
         }
 
-        if (char === "[" && !insideString) {
+        if (char === "(" && !insideString) {
             bracketDepth++;
         }
 
-        if (char === "]" && !insideString) {
+        if (char === ")" && !insideString) {
             bracketDepth--;
         }
 
-        if (char === "," && bracketDepth === 0 && !insideString) {
+        if (char === "[" && !insideString) {
+            squareBracketDepth++;
+        }
+
+        if (char === "]" && !insideString) {
+            squareBracketDepth--;
+        }
+
+        if (
+            char === "," &&
+            bracketDepth === 0 &&
+            squareBracketDepth === 0 &&
+            !insideString
+        ) {
             parts.push(current.trim());
             current = "";
         } else {
@@ -964,6 +978,33 @@ function splitByCommas(text) {
     parts.push(current.trim());
     return parts;
 }
+
+function getBracketContents(text) {
+    let start = text.indexOf("(");
+
+    if (start === -1) {
+        return "";
+    }
+
+    let depth = 0;
+
+    for (let i = start; i < text.length; i++) {
+        if (text[i] === "(") {
+            depth++;
+        }
+
+        if (text[i] === ")") {
+            depth--;
+
+            if (depth === 0) {
+                return text.substring(start + 1, i);
+            }
+        }
+    }
+
+    return "";
+}
+
 
 function showError(message) {
     document.getElementById("output").textContent +=
