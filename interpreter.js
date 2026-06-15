@@ -5,6 +5,8 @@ let loops = {};
 let procedures = {};
 let functions = {};
 let callStack = [];
+let declaredVariables = {};
+let hasError = false;
 
 function validateProgram() {
     let stack = [];
@@ -43,6 +45,8 @@ function validateProgram() {
                 showError("DECLARE statement needs a data type");
                 return false;
             }
+
+            declaredVariables[variableName] = true;
 
             if (dataType.includes("ARRAY")) {
                 if (!dataType.includes("[")) {
@@ -90,6 +94,37 @@ function validateProgram() {
             if (lastBlock.type !== "IF") {
                 currentLine = i;
                 showError("ENDIF does not match IF");
+                return false;
+            }
+        }
+
+        if (line.startsWith("CASE OF")) {
+            let caseExpression = line.replace("CASE OF", "").trim();
+
+            if (caseExpression === "") {
+                currentLine = i;
+                showError("CASE OF statement needs a value");
+                return false;
+            }
+
+            stack.push({
+                type: "CASE",
+                lineNumber: i
+            });
+        }
+
+        if (line === "ENDCASE") {
+            if (stack.length === 0) {
+                currentLine = i;
+                showError("ENDCASE without matching CASE OF");
+                return false;
+            }
+
+            let lastBlock = stack.pop();
+
+            if (lastBlock.type !== "CASE") {
+                currentLine = i;
+                showError("ENDCASE does not match CASE OF");
                 return false;
             }
         }
@@ -236,6 +271,10 @@ function validateProgram() {
             showError("ENDIF expected");
         }
 
+        if (unclosedBlock.type === "CASE") {
+            showError("ENDCASE expected");
+        }
+
         if (unclosedBlock.type === "FOR") {
             showError("NEXT expected");
         }
@@ -261,6 +300,7 @@ function runCode() {
     procedures = {};
     functions = {};
     callStack = [];
+    declaredVariables = {};
     document.getElementById("output").textContent = "";
 
     let code = document.getElementById("code").value;
@@ -349,7 +389,7 @@ function runCode() {
 
     currentLine = 0;
 
-    while (currentLine < lines.length) {
+    while (currentLine < lines.length && !hasError) {
         runLine(lines[currentLine].trim());
         currentLine++;
     }
@@ -360,6 +400,73 @@ function runLine(line) {
     if (line === "") return;
 
     if (line.startsWith("DECLARE")) {
+        return;
+    }
+
+    if (line.startsWith("CASE OF")) {
+        let caseExpression = line.replace("CASE OF", "").trim();
+        let caseValue = getValue(caseExpression);
+        let foundMatch = false;
+        let otherwiseLine = -1;
+        let endCaseLine = -1;
+
+        for (let i = currentLine + 1; i < lines.length; i++) {
+            let caseLine = lines[i].trim();
+
+            if (caseLine === "ENDCASE") {
+                endCaseLine = i;
+                break;
+            }
+
+            if (caseLine.startsWith("OTHERWISE")) {
+                otherwiseLine = i;
+            }
+
+            if (caseLine.includes(":") && !caseLine.startsWith("OTHERWISE")) {
+                let parts = caseLine.split(":");
+                let testValue = getValue(parts[0].trim());
+
+                if (testValue === caseValue) {
+                    currentLine = i - 1;
+                    foundMatch = true;
+                    return;
+                }
+            }
+        }
+
+        if (!foundMatch && otherwiseLine !== -1) {
+            currentLine = otherwiseLine - 1;
+            return;
+        }
+
+        currentLine = endCaseLine;
+        return;
+    }
+
+    if (line.includes(":")) {
+        let parts = line.split(":");
+        let command = parts.slice(1).join(":").trim();
+
+        if (command !== "") {
+            runLine(command);
+        }
+
+        skipToEndCase();
+        return;
+    }
+
+    if (line.startsWith("OTHERWISE")) {
+        let command = line.replace("OTHERWISE", "").replace(":", "").trim();
+
+        if (command !== "") {
+            runLine(command);
+        }
+
+        skipToEndCase();
+        return;
+    }
+
+    if (line === "ENDCASE") {
         return;
     }
 
@@ -403,7 +510,7 @@ function runLine(line) {
 
     if (line.endsWith(")")) {
         let procedureName = line.split("(")[0].trim();
-        let argumentText = line.split("(")[1].replace(")", "").trim();
+        let argumentText = getBracketContents(line);
 
         if (procedures[procedureName] !== undefined) {
             callStack.push(currentLine);
@@ -554,6 +661,12 @@ function runLine(line) {
             let indexText = name.split("[")[1].replace("]", "").trim();
             let indexes = indexText.split(",");
 
+            if (declaredVariables[arrayName] === undefined) {
+            showError("Variable " + arrayName + " has not been declared");
+            return;
+            }
+
+
             if (variables[arrayName] === undefined) {
                 variables[arrayName] = {};
             }
@@ -577,15 +690,13 @@ function runLine(line) {
             }
         }
 
-        //variables[name] = getValue(value);
-        let result = getValue(value);
+            if (declaredVariables[name] === undefined) {
+                showError("Variable " + name + " has not been declared");
+                return;
+            }
 
-        console.log("ASSIGNING:", name);
-        console.log("VALUE TEXT:", value);
-        console.log("RESULT:", result);
-
-        variables[name] = result;
-        return;
+            variables[name] = getValue(value);
+            return;
     }
 
     if (line.startsWith("OUTPUT")) {
@@ -846,7 +957,12 @@ function getValue(value) {
         }
     }
 
-    return variables[value];
+        if (declaredVariables[value] === undefined) {
+            showError("Variable " + value + " has not been declared");
+            return undefined;
+        }
+
+        return variables[value];
 }
 
 
@@ -899,6 +1015,29 @@ function skipToEndwhile() {
         }
 
         if (line === "ENDWHILE") {
+            if (depth === 0) {
+                return;
+            }
+
+            depth--;
+        }
+    }
+}
+
+
+function skipToEndCase() {
+    let depth = 0;
+
+    while (currentLine < lines.length - 1) {
+        currentLine++;
+
+        let line = lines[currentLine].trim();
+
+        if (line.startsWith("CASE OF")) {
+            depth++;
+        }
+
+        if (line === "ENDCASE") {
             if (depth === 0) {
                 return;
             }
@@ -1007,6 +1146,8 @@ function getBracketContents(text) {
 
 
 function showError(message) {
+    hasError = true;
+
     document.getElementById("output").textContent +=
         "Error on line " + (currentLine + 1) + ": " + message + "\n";
 }
