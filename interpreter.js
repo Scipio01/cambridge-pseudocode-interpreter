@@ -9,6 +9,10 @@ let declaredVariables = {};
 let hasError = false;
 let constants = {};
 
+function normaliseName(name) {
+    return name.trim().toUpperCase();
+}
+
 function validateProgram() {
     let stack = [];
 
@@ -58,7 +62,7 @@ function validateProgram() {
                     return false;
                 }
 
-                declaredVariables[variableName] = true;
+                declaredVariables[normaliseName(variableName)] = true;
             }
 
             if (dataType.includes("ARRAY")) {
@@ -806,13 +810,15 @@ function runLine(line) {
             return;
         }
 
-        if (declaredVariables[name] === undefined) {
+        let lookupName = normaliseName(name);
+
+        if (declaredVariables[lookupName] === undefined) {
             showError("Variable " + name + " has not been declared");
             return;
         }
 
         let result = getValue(value);
-        variables[name] = result;
+        variables[lookupName] = result;
         return;
     }
 
@@ -1171,17 +1177,19 @@ function getValue(value) {
         }
     }
 
-        if (constants[value] !== undefined) {
-            return constants[value];
+        let lookupName = normaliseName(value);
+
+        if (constants[lookupName] !== undefined) {
+            return constants[lookupName];
         }
 
-        if (declaredVariables[value] === undefined) {
+        if (declaredVariables[lookupName] === undefined) {
             showError("Variable " + value + " has not been declared");
             return undefined;
         }
 
-        return variables[value];
-}
+        return variables[lookupName];
+        }
 
 
 function skipToEndif() {
@@ -1373,6 +1381,7 @@ function showError(message) {
 function print(text) {
     document.getElementById("output").textContent += text + "\n";
 }
+
 
 
 function insertArrow() {
