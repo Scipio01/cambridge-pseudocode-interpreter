@@ -22,3 +22,24 @@ pre {
     max-width: 800px;
     min-height: 80px;
 }
+
+.dark-mode {
+    background-color: #1e1e1e;
+    color: white;
+}
+
+.dark-mode textarea {
+    background-color: #252526;
+    color: white;
+}
+
+.dark-mode pre {
+    background-color: #252526;
+    color: white;
+}
+
+.dark-mode button {
+    background-color: #333333;
+    color: white;
+    border: 1px solid #777777;
+}

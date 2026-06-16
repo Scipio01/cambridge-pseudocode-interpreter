@@ -1096,37 +1096,79 @@ function getValue(value) {
 
     if (value.includes(" MOD ")) {
         let parts = value.split(" MOD ");
-        return getValue(parts[0].trim()) % getValue(parts[1].trim());
+        let result = getValue(parts[0].trim());
+
+        for (let i = 1; i < parts.length; i++) {
+            result = result % getValue(parts[i].trim());
+        }
+
+        return result;
     }
 
     if (value.includes(" DIV ")) {
         let parts = value.split(" DIV ");
-        return Math.floor(getValue(parts[0].trim()) / getValue(parts[1].trim()));
+        let result = getValue(parts[0].trim());
+
+        for (let i = 1; i < parts.length; i++) {
+            result = Math.floor(result / getValue(parts[i].trim()));
+        }
+
+        return result;
     }
 
     if (value.includes("+")) {
         let parts = value.split("+");
-        return getValue(parts[0].trim()) + getValue(parts[1].trim());
+        let result = getValue(parts[0].trim());
+
+        for (let i = 1; i < parts.length; i++) {
+            result = result + getValue(parts[i].trim());
+        }
+
+        return result;
     }
 
     if (value.includes("-")) {
         let parts = value.split("-");
-        return getValue(parts[0].trim()) - getValue(parts[1].trim());
+        let result = getValue(parts[0].trim());
+
+        for (let i = 1; i < parts.length; i++) {
+            result = result - getValue(parts[i].trim());
+        }
+
+        return result;
     }
 
     if (value.includes("*")) {
         let parts = value.split("*");
-        return getValue(parts[0].trim()) * getValue(parts[1].trim());
+        let result = getValue(parts[0].trim());
+
+        for (let i = 1; i < parts.length; i++) {
+            result = result * getValue(parts[i].trim());
+        }
+
+        return result;
     }
 
     if (value.includes("^")) {
         let parts = value.split("^");
-        return Math.pow(getValue(parts[0].trim()), getValue(parts[1].trim()));
+        let result = getValue(parts[0].trim());
+
+        for (let i = 1; i < parts.length; i++) {
+            result = Math.pow(result, getValue(parts[i].trim()));
+        }
+
+        return result;
     }
 
     if (value.includes("/")) {
         let parts = value.split("/");
-        return getValue(parts[0].trim()) / getValue(parts[1].trim());
+        let result = getValue(parts[0].trim());
+
+        for (let i = 1; i < parts.length; i++) {
+            result = result / getValue(parts[i].trim());
+        }
+
+        return result;
     }
 
     if (!isNaN(value)) {
@@ -1379,4 +1421,8 @@ function insertArrow() {
 
     codeBox.selectionStart = start + 3;
     codeBox.selectionEnd = start + 3;
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle("dark-mode");
 }
