@@ -7,6 +7,7 @@ let functions = {};
 let callStack = [];
 let declaredVariables = {};
 let hasError = false;
+let constants = {};
 
 function validateProgram() {
     let stack = [];
@@ -296,6 +297,7 @@ function validateProgram() {
 
 function runCode() {
     variables = {};
+    constants = {};
     loops = {};
     procedures = {};
     functions = {};
@@ -313,6 +315,26 @@ function runCode() {
 
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
+
+    if (line.startsWith("CONSTANT")) {
+        let constantLine = line.replace("CONSTANT", "").trim();
+        let parts = constantLine.split("←");
+
+        let constantName = parts[0].trim();
+        let constantValue = parts[1].trim();
+
+        if (!isNaN(constantValue)) {
+            constants[constantName] = Number(constantValue);
+        }
+        else if (constantValue.startsWith('"') && constantValue.endsWith('"')) {
+            constants[constantName] = constantValue.slice(1, -1);
+        }
+        else {
+            constants[constantName] = constantValue;
+        }
+    }
+
+
 
         if (line.startsWith("PROCEDURE")) {
             let procedureHeader = line.replace("PROCEDURE", "").trim();
@@ -405,6 +427,10 @@ function runLine(line) {
         return;
     }
 
+    if (line.startsWith("CONSTANT")) {
+        return;
+    }
+
     if (line.startsWith("FUNCTION")) {
         let functionName = line.replace("FUNCTION", "").trim();
 
@@ -440,6 +466,41 @@ function runLine(line) {
             currentLine = callStack.pop();
         }
 
+        return;
+    }
+
+    if (line.startsWith("CALL")) {
+        let callText = line.replace("CALL", "").trim();
+        let procedureName = callText;
+        let argumentText = "";
+
+        if (callText.includes("(")) {
+            procedureName = callText.substring(0, callText.indexOf("(")).trim();
+            argumentText = getBracketContents(callText);
+        }
+
+        if (procedures[procedureName] !== undefined) {
+            callStack.push(currentLine);
+
+            let argumentsList = [];
+
+            if (argumentText !== "") {
+                argumentsList = splitByCommas(argumentText);
+            }
+
+            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
+                let parameterName = procedures[procedureName].parameterNames[i];
+                let argumentValue = getValue(argumentsList[i].trim());
+
+                declaredVariables[parameterName] = true;
+                variables[parameterName] = argumentValue;
+            }
+
+            currentLine = procedures[procedureName].startLine;
+            return;
+        }
+
+        showError("Procedure " + procedureName + " has not been defined");
         return;
     }
 
@@ -536,6 +597,10 @@ function runLine(line) {
 
     if (line.startsWith("WHILE")) {
         let condition = line.replace("WHILE", "").trim();
+
+        if (condition.endsWith("DO")) {
+            condition = condition.slice(0, -2).trim();
+        }
 
         if (getValue(condition) === false) {
             skipToEndwhile();
@@ -673,6 +738,11 @@ function runLine(line) {
             }
         }
 
+        if (constants[name] !== undefined) {
+            showError("Constant " + name + " cannot be changed");
+            return;
+        }
+
         if (declaredVariables[name] === undefined) {
             showError("Variable " + name + " has not been declared");
             return;
@@ -806,6 +876,26 @@ function getValue(value) {
         return true;
     }
 
+    if (value.startsWith("DIV(") && value.endsWith(")")) {
+        let inside = getBracketContents(value);
+        let parts = splitByCommas(inside);
+
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+
+        return Math.floor(left / right);
+    }
+
+    if (value.startsWith("MOD(") && value.endsWith(")")) {
+        let inside = getBracketContents(value);
+        let parts = splitByCommas(inside);
+
+        let left = getValue(parts[0].trim());
+        let right = getValue(parts[1].trim());
+
+        return left % right;
+    }
+
     if (value.startsWith("LENGTH(") && value.endsWith(")")) {
         let inside = value.replace("LENGTH(", "").slice(0, -1).trim();
         let text = getValue(inside);
@@ -829,7 +919,7 @@ function getValue(value) {
 
     if (value.startsWith("SUBSTRING(") && value.endsWith(")")) {
         let inside = value.replace("SUBSTRING(", "").slice(0, -1).trim();
-        let parts = inside.split(",");
+        let parts = splitByCommas(inside);
 
         let text = String(getValue(parts[0].trim()));
         let start = getValue(parts[1].trim());
@@ -840,7 +930,7 @@ function getValue(value) {
 
     if (value.startsWith("RANDOM(") && value.endsWith(")")) {
         let inside = value.replace("RANDOM(", "").slice(0, -1).trim();
-        let parts = inside.split(",");
+        let parts = splitByCommas(inside);
 
         let min = getValue(parts[0].trim());
         let max = getValue(parts[1].trim());
@@ -849,10 +939,19 @@ function getValue(value) {
     }
 
     if (value.startsWith("ROUND(") && value.endsWith(")")) {
-        let inside = value.replace("ROUND(", "").slice(0, -1).trim();
-        let number = getValue(inside);
+        let inside = getBracketContents(value);
+        let parts = splitByCommas(inside);
 
-        return Math.round(number);
+        let number = getValue(parts[0].trim());
+
+        if (parts.length === 1) {
+            return Math.round(number);
+        }
+
+        let places = getValue(parts[1].trim());
+        let multiplier = Math.pow(10, places);
+
+        return Math.round(number * multiplier) / multiplier;
     }
 
     if (value.endsWith(")") && value.includes("(")) {
@@ -961,7 +1060,7 @@ function getValue(value) {
     if (value.includes("[") && value.endsWith("]")) {
         let arrayName = value.split("[")[0].trim();
         let indexText = value.split("[")[1].replace("]", "").trim();
-        let indexes = indexText.split(",");
+        let indexes = splitByCommas(indexText);
 
         if (variables[arrayName] === undefined) {
             return undefined;
@@ -983,6 +1082,10 @@ function getValue(value) {
             return variables[arrayName][row][column];
         }
     }
+
+        if (constants[value] !== undefined) {
+            return constants[value];
+        }
 
         if (declaredVariables[value] === undefined) {
             showError("Variable " + value + " has not been declared");
