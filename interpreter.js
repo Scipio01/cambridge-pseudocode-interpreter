@@ -1114,6 +1114,14 @@ function getValue(value) {
         return left * right;
     }
 
+    if (value.includes("^")) {
+    let parts = value.split("^");
+    let left = getValue(parts[0].trim());
+    let right = getValue(parts[1].trim());
+
+    return Math.pow(left, right);
+    }
+
     if (value.includes("/")) {
         let parts = value.split("/");
         let left = getValue(parts[0].trim());
