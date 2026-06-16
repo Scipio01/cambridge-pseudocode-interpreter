@@ -32,10 +32,10 @@ function validateProgram() {
 
             let colonPos = declaration.indexOf(":");
 
-            let variableName = declaration.substring(0, colonPos).trim();
+            let variableText = declaration.substring(0, colonPos).trim();
             let dataType = declaration.substring(colonPos + 1).trim();
 
-            if (variableName === "") {
+            if (variableText === "") {
                 currentLine = i;
                 showError("DECLARE statement needs a variable name");
                 return false;
@@ -47,7 +47,19 @@ function validateProgram() {
                 return false;
             }
 
-            declaredVariables[variableName] = true;
+            let variableNames = splitByCommas(variableText);
+
+            for (let v = 0; v < variableNames.length; v++) {
+                let variableName = variableNames[v].trim();
+
+                if (variableName === "") {
+                    currentLine = i;
+                    showError("DECLARE statement has an empty variable name");
+                    return false;
+                }
+
+                declaredVariables[variableName] = true;
+            }
 
             if (dataType.includes("ARRAY")) {
                 if (!dataType.includes("[")) {
@@ -154,7 +166,22 @@ function validateProgram() {
                 return false;
             }
 
-            let range = parts[1].split("TO");
+            let rangeText = parts[1].trim();
+
+            if (rangeText.includes("STEP")) {
+                let rangeAndStep = rangeText.split("STEP");
+                let stepValue = rangeAndStep[1].trim();
+
+                if (stepValue === "") {
+                    currentLine = i;
+                    showError("FOR statement STEP needs a value");
+                    return false;
+                }
+
+                rangeText = rangeAndStep[0].trim();
+            }
+
+            let range = rangeText.split("TO");
             let startValue = range[0].trim();
             let endValue = range[1].trim();
 
@@ -203,6 +230,10 @@ function validateProgram() {
 
         if (line.startsWith("WHILE")) {
             let condition = line.replace("WHILE", "").trim();
+
+            if (condition.endsWith("DO")) {
+                condition = condition.slice(0, -2).trim();
+            }
 
             if (condition === "") {
                 currentLine = i;
@@ -653,17 +684,35 @@ function runLine(line) {
         let parts = forLine.split("←");
 
         let variableName = parts[0].trim();
-        let range = parts[1].split("TO");
 
-        let startValue = getValue(range[0].trim());
-        let endValue = getValue(range[1].trim());
+        let startValue;
+        let endValue;
+        let stepValue = 1;
+
+        if (parts[1].includes("STEP")) {
+            let rangeAndStep = parts[1].split("STEP");
+
+            stepValue = getValue(rangeAndStep[1].trim());
+
+            let range = rangeAndStep[0].split("TO");
+
+            startValue = getValue(range[0].trim());
+            endValue = getValue(range[1].trim());
+        }
+        else {
+            let range = parts[1].split("TO");
+
+            startValue = getValue(range[0].trim());
+            endValue = getValue(range[1].trim());
+        }
 
         variables[variableName] = startValue;
         declaredVariables[variableName] = true;
 
         loops[variableName] = {
             startLine: currentLine,
-            endValue: endValue
+            endValue: endValue,
+            stepValue: stepValue
         };
 
         return;
@@ -672,9 +721,15 @@ function runLine(line) {
     if (line.startsWith("NEXT")) {
         let variableName = line.replace("NEXT", "").trim();
 
-        variables[variableName]++;
+        variables[variableName] += loops[variableName].stepValue;
 
-        if (variables[variableName] <= loops[variableName].endValue) {
+        if (
+            (loops[variableName].stepValue > 0 &&
+            variables[variableName] <= loops[variableName].endValue)
+            ||
+            (loops[variableName].stepValue < 0 &&
+            variables[variableName] >= loops[variableName].endValue)
+        ) {
             currentLine = loops[variableName].startLine;
         }
 
@@ -850,6 +905,11 @@ function getValue(value) {
 
     if (value.startsWith('"') && value.endsWith('"')) {
         return value.slice(1, -1);
+    }
+
+    if (value.startsWith("NOT ")) {
+        let expression = value.substring(4).trim();
+        return !getValue(expression);
     }
 
     if (value.includes(" OR ")) {
