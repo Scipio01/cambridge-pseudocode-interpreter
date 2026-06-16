@@ -727,6 +727,7 @@ function runLine(line) {
 function runFunction(functionName, argumentsList) {
     let savedVariables = {...variables};
     let savedDeclaredVariables = {...declaredVariables};
+    let savedCurrentLine = currentLine;
 
     for (let i = 0; i < functions[functionName].parameterNames.length; i++) {
         let parameterName = functions[functionName].parameterNames[i];
@@ -736,8 +737,11 @@ function runFunction(functionName, argumentsList) {
         variables[parameterName] = argumentValue;
     }
 
-    for (let lineNumber = functions[functionName].startLine + 1; lineNumber < functions[functionName].endLine; lineNumber++) {
-        let line = lines[lineNumber].trim();
+    let functionLine = functions[functionName].startLine + 1;
+    let functionEnd = functions[functionName].endLine;
+
+    while (functionLine < functionEnd && !hasError) {
+        let line = lines[functionLine].trim();
 
         if (line.startsWith("RETURN")) {
             let returnExpression = line.replace("RETURN", "").trim();
@@ -745,12 +749,21 @@ function runFunction(functionName, argumentsList) {
 
             variables = savedVariables;
             declaredVariables = savedDeclaredVariables;
+            currentLine = savedCurrentLine;
+
             return returnValue;
         }
+
+        currentLine = functionLine;
+        runLine(line);
+
+        functionLine = currentLine + 1;
     }
 
     variables = savedVariables;
     declaredVariables = savedDeclaredVariables;
+    currentLine = savedCurrentLine;
+
     return undefined;
 }
 
