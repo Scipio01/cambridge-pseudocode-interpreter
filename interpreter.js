@@ -494,7 +494,11 @@ function runLine(line) {
 
     if (line === "ENDPROCEDURE") {
         if (callStack.length > 0) {
-            currentLine = callStack.pop();
+            let callInfo = callStack.pop();
+
+            variables = callInfo.savedVariables;
+            declaredVariables = callInfo.savedDeclaredVariables;
+            currentLine = callInfo.returnLine;
         }
 
         return;
@@ -511,7 +515,11 @@ function runLine(line) {
         }
 
         if (procedures[procedureName] !== undefined) {
-            callStack.push(currentLine);
+            callStack.push({
+                returnLine: currentLine,
+                savedVariables: {...variables},
+                savedDeclaredVariables: {...declaredVariables}
+            });
 
             let argumentsList = [];
 
@@ -813,7 +821,11 @@ function runLine(line) {
         let argumentText = getBracketContents(line);
 
         if (procedures[procedureName] !== undefined) {
-            callStack.push(currentLine);
+            callStack.push({
+                returnLine: currentLine,
+                savedVariables: {...variables},
+                savedDeclaredVariables: {...declaredVariables}
+            });
 
             let argumentsList = [];
 
