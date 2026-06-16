@@ -929,7 +929,12 @@ function getValue(value) {
     }
 
     if (value.startsWith("RANDOM(") && value.endsWith(")")) {
-        let inside = value.replace("RANDOM(", "").slice(0, -1).trim();
+        let inside = getBracketContents(value).trim();
+
+        if (inside === "") {
+            return Math.random();
+        }
+
         let parts = splitByCommas(inside);
 
         let min = getValue(parts[0].trim());
