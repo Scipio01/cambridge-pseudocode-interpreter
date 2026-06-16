@@ -373,11 +373,11 @@ function runCode() {
 
         if (line.startsWith("PROCEDURE")) {
             let procedureHeader = line.replace("PROCEDURE", "").trim();
-            let procedureName = procedureHeader;
+            let procedureName = normaliseName(procedureHeader);
             let parameterNames = [];
 
             if (procedureHeader.includes("(")) {
-                procedureName = procedureHeader.split("(")[0].trim();
+                procedureName = normaliseName(procedureHeader.split("(")[0].trim());
 
                 let parameterText = procedureHeader
                     .split("(")[1]
@@ -410,7 +410,7 @@ function runCode() {
 
         if (line.startsWith("FUNCTION")) {
             let functionHeader = line.replace("FUNCTION", "").trim();
-            let functionName = functionHeader.split("(")[0].trim();
+            let functionName = normaliseName(functionHeader.split("(")[0].trim());
             let parameterNames = [];
 
             let parameterText = functionHeader
@@ -473,7 +473,8 @@ function runLine(line) {
             functionName = functionName.split("(")[0].trim();
         }
 
-        currentLine = functions[functionName].endLine;
+        let functionLookupName = normaliseName(functionName);
+        currentLine = functions[functionLookupName].endLine;
         return;
     }
 
@@ -492,7 +493,8 @@ function runLine(line) {
             procedureName = procedureName.split("(")[0].trim();
         }
 
-        currentLine = procedures[procedureName].endLine;
+        let procedureLookupName = normaliseName(procedureName);
+        currentLine = procedures[procedureLookupName].endLine;
         return;
     }
 
@@ -518,7 +520,9 @@ function runLine(line) {
             argumentText = getBracketContents(callText);
         }
 
-        if (procedures[procedureName] !== undefined) {
+        let procedureLookupName = normaliseName(procedureName);
+
+        if (procedures[procedureLookupName] !== undefined) {
             callStack.push({
                 returnLine: currentLine,
                 savedVariables: {...variables},
@@ -531,15 +535,16 @@ function runLine(line) {
                 argumentsList = splitByCommas(argumentText);
             }
 
-            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
-                let parameterName = procedures[procedureName].parameterNames[i];
+            for (let i = 0; i < procedures[procedureLookupName].parameterNames.length; i++) {
+                let parameterName = procedures[procedureLookupName].parameterNames[i];
                 let argumentValue = getValue(argumentsList[i].trim());
 
-                declaredVariables[parameterName] = true;
-                variables[parameterName] = argumentValue;
+                let lookupParameterName = normaliseName(parameterName);
+                declaredVariables[lookupParameterName] = true;
+                variables[lookupParameterName] = argumentValue;
             }
 
-            currentLine = procedures[procedureName].startLine;
+            currentLine = procedures[procedureLookupName].startLine;
             return;
         }
 
@@ -695,7 +700,7 @@ function runLine(line) {
         let forLine = line.replace("FOR", "").trim();
         let parts = forLine.split("←");
 
-        let variableName = parts[0].trim();
+        let variableName = normaliseName(parts[0].trim());
 
         let startValue;
         let endValue;
@@ -731,7 +736,7 @@ function runLine(line) {
     }
 
     if (line.startsWith("NEXT")) {
-        let variableName = line.replace("NEXT", "").trim();
+        let variableName = normaliseName(line.replace("NEXT", "").trim());
 
         variables[variableName] += loops[variableName].stepValue;
 
@@ -750,8 +755,9 @@ function runLine(line) {
 
     if (line.startsWith("INPUT")) {
         let variableName = line.replace("INPUT", "").trim();
+        let lookupName = normaliseName(variableName);
 
-        if (declaredVariables[variableName] === undefined) {
+        if (declaredVariables[lookupName] === undefined) {
             showError("Variable " + variableName + " has not been declared");
             return;
         }
@@ -759,9 +765,9 @@ function runLine(line) {
         let userInput = prompt("Enter value for " + variableName);
 
         if (!isNaN(userInput)) {
-            variables[variableName] = Number(userInput);
+            variables[lookupName] = Number(userInput);
         } else {
-            variables[variableName] = userInput;
+            variables[lookupName] = userInput;
         }
 
         return;
@@ -773,12 +779,12 @@ function runLine(line) {
         let value = parts[1].trim();
 
         if (name.includes("[") && name.endsWith("]")) {
-            let arrayName = name.split("[")[0].trim();
+            let arrayName = normaliseName(name.split("[")[0].trim());
             let indexText = name.split("[")[1].replace("]", "").trim();
-            let indexes = indexText.split(",");
+            let indexes = splitByCommas(indexText);
 
             if (declaredVariables[arrayName] === undefined) {
-                showError("Variable " + arrayName + " has not been declared");
+                showError("Variable " + name.split("[")[0].trim() + " has not been declared");
                 return;
             }
 
@@ -805,12 +811,12 @@ function runLine(line) {
             }
         }
 
-        if (constants[name] !== undefined) {
+        let lookupName = normaliseName(name);
+
+        if (constants[lookupName] !== undefined) {
             showError("Constant " + name + " cannot be changed");
             return;
         }
-
-        let lookupName = normaliseName(name);
 
         if (declaredVariables[lookupName] === undefined) {
             showError("Variable " + name + " has not been declared");
@@ -824,9 +830,10 @@ function runLine(line) {
 
     if (line.endsWith(")")) {
         let procedureName = line.split("(")[0].trim();
+        let procedureLookupName = normaliseName(procedureName);
         let argumentText = getBracketContents(line);
 
-        if (procedures[procedureName] !== undefined) {
+        if (procedures[procedureLookupName] !== undefined) {
             callStack.push({
                 returnLine: currentLine,
                 savedVariables: {...variables},
@@ -839,15 +846,16 @@ function runLine(line) {
                 argumentsList = splitByCommas(argumentText);
             }
 
-            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
-                let parameterName = procedures[procedureName].parameterNames[i];
+            for (let i = 0; i < procedures[procedureLookupName].parameterNames.length; i++) {
+                let parameterName = procedures[procedureLookupName].parameterNames[i];
                 let argumentValue = getValue(argumentsList[i].trim());
 
-                declaredVariables[parameterName] = true;
-                variables[parameterName] = argumentValue;
+                let lookupParameterName = normaliseName(parameterName);
+                declaredVariables[lookupParameterName] = true;
+                variables[lookupParameterName] = argumentValue;
             }
 
-            currentLine = procedures[procedureName].startLine;
+            currentLine = procedures[procedureLookupName].startLine;
             return;
         }
     }
@@ -868,20 +876,23 @@ function runLine(line) {
 
 
 function runFunction(functionName, argumentsList) {
+    let functionLookupName = normaliseName(functionName);
+
     let savedVariables = {...variables};
     let savedDeclaredVariables = {...declaredVariables};
     let savedCurrentLine = currentLine;
 
-    for (let i = 0; i < functions[functionName].parameterNames.length; i++) {
-        let parameterName = functions[functionName].parameterNames[i];
+    for (let i = 0; i < functions[functionLookupName].parameterNames.length; i++) {
+        let parameterName = functions[functionLookupName].parameterNames[i];
+        let lookupParameterName = normaliseName(parameterName);
         let argumentValue = getValue(argumentsList[i].trim());
 
-        declaredVariables[parameterName] = true;
-        variables[parameterName] = argumentValue;
+        declaredVariables[lookupParameterName] = true;
+        variables[lookupParameterName] = argumentValue;
     }
 
-    let functionLine = functions[functionName].startLine + 1;
-    let functionEnd = functions[functionName].endLine;
+    let functionLine = functions[functionLookupName].startLine + 1;
+    let functionEnd = functions[functionLookupName].endLine;
 
     while (functionLine < functionEnd && !hasError) {
         let line = lines[functionLine].trim();
@@ -1041,7 +1052,9 @@ function getValue(value) {
     }
 
     if (value.endsWith(")") && value.includes("(")) {
-        let functionName = value.substring(0, value.indexOf("(")).trim();
+            let functionName = normaliseName(
+        value.substring(0, value.indexOf("(")).trim()
+    );
         let argumentText = getBracketContents(value);
 
         if (functions[functionName] !== undefined) {
