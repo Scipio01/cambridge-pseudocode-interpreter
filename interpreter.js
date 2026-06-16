@@ -301,6 +301,8 @@ function runCode() {
     functions = {};
     callStack = [];
     declaredVariables = {};
+    hasError = false;
+
     document.getElementById("output").textContent = "";
 
     let code = document.getElementById("code").value;
@@ -403,6 +405,44 @@ function runLine(line) {
         return;
     }
 
+    if (line.startsWith("FUNCTION")) {
+        let functionName = line.replace("FUNCTION", "").trim();
+
+        if (functionName.includes("(")) {
+            functionName = functionName.split("(")[0].trim();
+        }
+
+        currentLine = functions[functionName].endLine;
+        return;
+    }
+
+    if (line === "ENDFUNCTION") {
+        return;
+    }
+
+    if (line.startsWith("RETURN")) {
+        return;
+    }
+
+    if (line.startsWith("PROCEDURE")) {
+        let procedureName = line.replace("PROCEDURE", "").trim();
+
+        if (procedureName.includes("(")) {
+            procedureName = procedureName.split("(")[0].trim();
+        }
+
+        currentLine = procedures[procedureName].endLine;
+        return;
+    }
+
+    if (line === "ENDPROCEDURE") {
+        if (callStack.length > 0) {
+            currentLine = callStack.pop();
+        }
+
+        return;
+    }
+
     if (line.startsWith("CASE OF")) {
         let caseExpression = line.replace("CASE OF", "").trim();
         let caseValue = getValue(caseExpression);
@@ -443,18 +483,6 @@ function runLine(line) {
         return;
     }
 
-    if (line.includes(":")) {
-        let parts = line.split(":");
-        let command = parts.slice(1).join(":").trim();
-
-        if (command !== "") {
-            runLine(command);
-        }
-
-        skipToEndCase();
-        return;
-    }
-
     if (line.startsWith("OTHERWISE")) {
         let command = line.replace("OTHERWISE", "").replace(":", "").trim();
 
@@ -470,67 +498,16 @@ function runLine(line) {
         return;
     }
 
-    if (line.startsWith("FUNCTION")) {
-        let functionName = line.replace("FUNCTION", "").trim();
+    if (line.includes(":")) {
+        let parts = line.split(":");
+        let command = parts.slice(1).join(":").trim();
 
-        if (functionName.includes("(")) {
-            functionName = functionName.split("(")[0].trim();
+        if (command !== "") {
+            runLine(command);
         }
 
-        currentLine = functions[functionName].endLine;
+        skipToEndCase();
         return;
-    }
-
-    if (line === "ENDFUNCTION") {
-        return;
-    }
-
-    if (line.startsWith("RETURN")) {
-        return;
-    }
-
-    if (line.startsWith("PROCEDURE")) {
-        let procedureName = line.replace("PROCEDURE", "").trim();
-
-        if (procedureName.includes("(")) {
-            procedureName = procedureName.split("(")[0].trim();
-        }
-
-        currentLine = procedures[procedureName].endLine;
-        return;
-    }
-
-    if (line === "ENDPROCEDURE") {
-        if (callStack.length > 0) {
-            currentLine = callStack.pop();
-        }
-
-        return;
-    }
-
-    if (line.endsWith(")")) {
-        let procedureName = line.split("(")[0].trim();
-        let argumentText = getBracketContents(line);
-
-        if (procedures[procedureName] !== undefined) {
-            callStack.push(currentLine);
-
-            let argumentsList = [];
-
-            if (argumentText !== "") {
-                argumentsList = splitByCommas(argumentText);
-            }
-
-            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
-                let parameterName = procedures[procedureName].parameterNames[i];
-                let argumentValue = getValue(argumentsList[i].trim());
-
-                variables[parameterName] = argumentValue;
-            }
-
-            currentLine = procedures[procedureName].startLine;
-            return;
-        }
     }
 
     if (line === "ELSE") {
@@ -617,6 +594,7 @@ function runLine(line) {
         let endValue = getValue(range[1].trim());
 
         variables[variableName] = startValue;
+        declaredVariables[variableName] = true;
 
         loops[variableName] = {
             startLine: currentLine,
@@ -640,6 +618,12 @@ function runLine(line) {
 
     if (line.startsWith("INPUT")) {
         let variableName = line.replace("INPUT", "").trim();
+
+        if (declaredVariables[variableName] === undefined) {
+            showError("Variable " + variableName + " has not been declared");
+            return;
+        }
+
         let userInput = prompt("Enter value for " + variableName);
 
         if (!isNaN(userInput)) {
@@ -662,10 +646,9 @@ function runLine(line) {
             let indexes = indexText.split(",");
 
             if (declaredVariables[arrayName] === undefined) {
-            showError("Variable " + arrayName + " has not been declared");
-            return;
+                showError("Variable " + arrayName + " has not been declared");
+                return;
             }
-
 
             if (variables[arrayName] === undefined) {
                 variables[arrayName] = {};
@@ -690,13 +673,40 @@ function runLine(line) {
             }
         }
 
-            if (declaredVariables[name] === undefined) {
-                showError("Variable " + name + " has not been declared");
-                return;
+        if (declaredVariables[name] === undefined) {
+            showError("Variable " + name + " has not been declared");
+            return;
+        }
+
+        let result = getValue(value);
+        variables[name] = result;
+        return;
+    }
+
+    if (line.endsWith(")")) {
+        let procedureName = line.split("(")[0].trim();
+        let argumentText = getBracketContents(line);
+
+        if (procedures[procedureName] !== undefined) {
+            callStack.push(currentLine);
+
+            let argumentsList = [];
+
+            if (argumentText !== "") {
+                argumentsList = splitByCommas(argumentText);
             }
 
-            variables[name] = getValue(value);
+            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
+                let parameterName = procedures[procedureName].parameterNames[i];
+                let argumentValue = getValue(argumentsList[i].trim());
+
+                declaredVariables[parameterName] = true;
+                variables[parameterName] = argumentValue;
+            }
+
+            currentLine = procedures[procedureName].startLine;
             return;
+        }
     }
 
     if (line.startsWith("OUTPUT")) {
@@ -716,11 +726,13 @@ function runLine(line) {
 
 function runFunction(functionName, argumentsList) {
     let savedVariables = {...variables};
+    let savedDeclaredVariables = {...declaredVariables};
 
     for (let i = 0; i < functions[functionName].parameterNames.length; i++) {
         let parameterName = functions[functionName].parameterNames[i];
         let argumentValue = getValue(argumentsList[i].trim());
 
+        declaredVariables[parameterName] = true;
         variables[parameterName] = argumentValue;
     }
 
@@ -732,11 +744,13 @@ function runFunction(functionName, argumentsList) {
             let returnValue = getValue(returnExpression);
 
             variables = savedVariables;
+            declaredVariables = savedDeclaredVariables;
             return returnValue;
         }
     }
 
     variables = savedVariables;
+    declaredVariables = savedDeclaredVariables;
     return undefined;
 }
 
