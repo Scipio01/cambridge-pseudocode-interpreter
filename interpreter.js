@@ -19,6 +19,10 @@ function validateProgram() {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
 
+        if (line === "THEN") {
+            continue;
+        }
+
         if (line.startsWith("DECLARE")) {
             let declaration = line.replace("DECLARE", "").trim();
 
@@ -87,9 +91,18 @@ function validateProgram() {
         }
 
         if (line.startsWith("IF")) {
-            if (!line.endsWith("THEN")) {
+            let validIf = false;
+
+            if (line.endsWith("THEN")) {
+                validIf = true;
+            }
+            else if (i + 1 < lines.length && lines[i + 1].trim() === "THEN") {
+                validIf = true;
+            }
+
+            if (!validIf) {
                 currentLine = i;
-                showError("IF statement must end with THEN");
+                showError("IF statement must end with THEN or be followed by THEN");
                 return false;
             }
 
@@ -197,13 +210,13 @@ function validateProgram() {
 
             stack.push({
                 type: "FOR",
-                variableName: variableName,
+                variableName: normaliseName(variableName),
                 lineNumber: i
             });
         }
 
         if (line.startsWith("NEXT")) {
-            let nextVariable = line.replace("NEXT", "").trim();
+            let nextVariable = normaliseName(line.replace("NEXT", "").trim());
 
             if (nextVariable === "") {
                 currentLine = i;
@@ -458,6 +471,10 @@ function runCode() {
 function runLine(line) {
     if (line === "") return;
 
+    if (line === "THEN") {
+        return;
+    }
+
     if (line.startsWith("DECLARE")) {
         return;
     }
@@ -629,12 +646,21 @@ function runLine(line) {
     }
 
     if (line.startsWith("IF")) {
-        if (!line.endsWith("THEN")) {
-            showError("IF statement must end with THEN");
+        let condition;
+
+        if (line.endsWith("THEN")) {
+            condition = line.replace("IF", "").replace("THEN", "").trim();
+        }
+        else if (
+            currentLine + 1 < lines.length &&
+            lines[currentLine + 1].trim() === "THEN"
+        ) {
+            condition = line.replace("IF", "").trim();
+        }
+        else {
+            showError("IF statement must end with THEN or be followed by THEN");
             return;
         }
-
-        let condition = line.replace("IF", "").replace("THEN", "").trim();
 
         if (getValue(condition) === false) {
             skipToElseOrEndif();
