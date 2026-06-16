@@ -355,7 +355,7 @@ function runCode() {
         let constantLine = line.replace("CONSTANT", "").trim();
         let parts = constantLine.split("←");
 
-        let constantName = parts[0].trim();
+        let constantName = normaliseName(parts[0].trim());
         let constantValue = parts[1].trim();
 
         if (!isNaN(constantValue)) {
