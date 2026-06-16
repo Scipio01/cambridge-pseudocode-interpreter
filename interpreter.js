@@ -66,7 +66,7 @@ function validateProgram() {
                     return false;
                 }
 
-                declaredVariables[normaliseName(variableName)] = true;
+                declaredVariables[variableName] = true;
             }
 
             if (dataType.includes("ARRAY")) {
@@ -210,13 +210,13 @@ function validateProgram() {
 
             stack.push({
                 type: "FOR",
-                variableName: normaliseName(variableName),
+                variableName: variableName,
                 lineNumber: i
             });
         }
 
         if (line.startsWith("NEXT")) {
-            let nextVariable = normaliseName(line.replace("NEXT", "").trim());
+            let nextVariable = line.replace("NEXT", "").trim();
 
             if (nextVariable === "") {
                 currentLine = i;
@@ -364,33 +364,31 @@ function runCode() {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
 
-    if (line.startsWith("CONSTANT")) {
-        let constantLine = line.replace("CONSTANT", "").trim();
-        let parts = constantLine.split("←");
+        if (line.startsWith("CONSTANT")) {
+            let constantLine = line.replace("CONSTANT", "").trim();
+            let parts = constantLine.split("←");
 
-        let constantName = normaliseName(parts[0].trim());
-        let constantValue = parts[1].trim();
+            let constantName = parts[0].trim();
+            let constantValue = parts[1].trim();
 
-        if (!isNaN(constantValue)) {
-            constants[constantName] = Number(constantValue);
+            if (!isNaN(constantValue)) {
+                constants[constantName] = Number(constantValue);
+            }
+            else if (constantValue.startsWith('"') && constantValue.endsWith('"')) {
+                constants[constantName] = constantValue.slice(1, -1);
+            }
+            else {
+                constants[constantName] = constantValue;
+            }
         }
-        else if (constantValue.startsWith('"') && constantValue.endsWith('"')) {
-            constants[constantName] = constantValue.slice(1, -1);
-        }
-        else {
-            constants[constantName] = constantValue;
-        }
-    }
-
-
 
         if (line.startsWith("PROCEDURE")) {
             let procedureHeader = line.replace("PROCEDURE", "").trim();
-            let procedureName = normaliseName(procedureHeader);
+            let procedureName = procedureHeader;
             let parameterNames = [];
 
             if (procedureHeader.includes("(")) {
-                procedureName = normaliseName(procedureHeader.split("(")[0].trim());
+                procedureName = procedureHeader.split("(")[0].trim();
 
                 let parameterText = procedureHeader
                     .split("(")[1]
@@ -423,7 +421,7 @@ function runCode() {
 
         if (line.startsWith("FUNCTION")) {
             let functionHeader = line.replace("FUNCTION", "").trim();
-            let functionName = normaliseName(functionHeader.split("(")[0].trim());
+            let functionName = functionHeader.split("(")[0].trim();
             let parameterNames = [];
 
             let parameterText = functionHeader
@@ -490,8 +488,7 @@ function runLine(line) {
             functionName = functionName.split("(")[0].trim();
         }
 
-        let functionLookupName = normaliseName(functionName);
-        currentLine = functions[functionLookupName].endLine;
+        currentLine = functions[functionName].endLine;
         return;
     }
 
@@ -510,8 +507,7 @@ function runLine(line) {
             procedureName = procedureName.split("(")[0].trim();
         }
 
-        let procedureLookupName = normaliseName(procedureName);
-        currentLine = procedures[procedureLookupName].endLine;
+        currentLine = procedures[procedureName].endLine;
         return;
     }
 
@@ -537,9 +533,7 @@ function runLine(line) {
             argumentText = getBracketContents(callText);
         }
 
-        let procedureLookupName = normaliseName(procedureName);
-
-        if (procedures[procedureLookupName] !== undefined) {
+        if (procedures[procedureName] !== undefined) {
             callStack.push({
                 returnLine: currentLine,
                 savedVariables: {...variables},
@@ -552,16 +546,15 @@ function runLine(line) {
                 argumentsList = splitByCommas(argumentText);
             }
 
-            for (let i = 0; i < procedures[procedureLookupName].parameterNames.length; i++) {
-                let parameterName = procedures[procedureLookupName].parameterNames[i];
+            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
+                let parameterName = procedures[procedureName].parameterNames[i];
                 let argumentValue = getValue(argumentsList[i].trim());
 
-                let lookupParameterName = normaliseName(parameterName);
-                declaredVariables[lookupParameterName] = true;
-                variables[lookupParameterName] = argumentValue;
+                declaredVariables[parameterName] = true;
+                variables[parameterName] = argumentValue;
             }
 
-            currentLine = procedures[procedureLookupName].startLine;
+            currentLine = procedures[procedureName].startLine;
             return;
         }
 
@@ -726,7 +719,7 @@ function runLine(line) {
         let forLine = line.replace("FOR", "").trim();
         let parts = forLine.split("←");
 
-        let variableName = normaliseName(parts[0].trim());
+        let variableName = parts[0].trim();
 
         let startValue;
         let endValue;
@@ -762,7 +755,7 @@ function runLine(line) {
     }
 
     if (line.startsWith("NEXT")) {
-        let variableName = normaliseName(line.replace("NEXT", "").trim());
+        let variableName = line.replace("NEXT", "").trim();
 
         variables[variableName] += loops[variableName].stepValue;
 
@@ -781,9 +774,8 @@ function runLine(line) {
 
     if (line.startsWith("INPUT")) {
         let variableName = line.replace("INPUT", "").trim();
-        let lookupName = normaliseName(variableName);
 
-        if (declaredVariables[lookupName] === undefined) {
+        if (declaredVariables[variableName] === undefined) {
             showError("Variable " + variableName + " has not been declared");
             return;
         }
@@ -791,9 +783,9 @@ function runLine(line) {
         let userInput = prompt("Enter value for " + variableName);
 
         if (!isNaN(userInput)) {
-            variables[lookupName] = Number(userInput);
+            variables[variableName] = Number(userInput);
         } else {
-            variables[lookupName] = userInput;
+            variables[variableName] = userInput;
         }
 
         return;
@@ -805,12 +797,12 @@ function runLine(line) {
         let value = parts[1].trim();
 
         if (name.includes("[") && name.endsWith("]")) {
-            let arrayName = normaliseName(name.split("[")[0].trim());
+            let arrayName = name.split("[")[0].trim();
             let indexText = name.split("[")[1].replace("]", "").trim();
             let indexes = splitByCommas(indexText);
 
             if (declaredVariables[arrayName] === undefined) {
-                showError("Variable " + name.split("[")[0].trim() + " has not been declared");
+                showError("Variable " + arrayName + " has not been declared");
                 return;
             }
 
@@ -837,29 +829,26 @@ function runLine(line) {
             }
         }
 
-        let lookupName = normaliseName(name);
-
-        if (constants[lookupName] !== undefined) {
+        if (constants[name] !== undefined) {
             showError("Constant " + name + " cannot be changed");
             return;
         }
 
-        if (declaredVariables[lookupName] === undefined) {
+        if (declaredVariables[name] === undefined) {
             showError("Variable " + name + " has not been declared");
             return;
         }
 
         let result = getValue(value);
-        variables[lookupName] = result;
+        variables[name] = result;
         return;
     }
 
     if (line.endsWith(")")) {
         let procedureName = line.split("(")[0].trim();
-        let procedureLookupName = normaliseName(procedureName);
         let argumentText = getBracketContents(line);
 
-        if (procedures[procedureLookupName] !== undefined) {
+        if (procedures[procedureName] !== undefined) {
             callStack.push({
                 returnLine: currentLine,
                 savedVariables: {...variables},
@@ -872,16 +861,15 @@ function runLine(line) {
                 argumentsList = splitByCommas(argumentText);
             }
 
-            for (let i = 0; i < procedures[procedureLookupName].parameterNames.length; i++) {
-                let parameterName = procedures[procedureLookupName].parameterNames[i];
+            for (let i = 0; i < procedures[procedureName].parameterNames.length; i++) {
+                let parameterName = procedures[procedureName].parameterNames[i];
                 let argumentValue = getValue(argumentsList[i].trim());
 
-                let lookupParameterName = normaliseName(parameterName);
-                declaredVariables[lookupParameterName] = true;
-                variables[lookupParameterName] = argumentValue;
+                declaredVariables[parameterName] = true;
+                variables[parameterName] = argumentValue;
             }
 
-            currentLine = procedures[procedureLookupName].startLine;
+            currentLine = procedures[procedureName].startLine;
             return;
         }
     }
@@ -902,23 +890,20 @@ function runLine(line) {
 
 
 function runFunction(functionName, argumentsList) {
-    let functionLookupName = normaliseName(functionName);
-
     let savedVariables = {...variables};
     let savedDeclaredVariables = {...declaredVariables};
     let savedCurrentLine = currentLine;
 
-    for (let i = 0; i < functions[functionLookupName].parameterNames.length; i++) {
-        let parameterName = functions[functionLookupName].parameterNames[i];
-        let lookupParameterName = normaliseName(parameterName);
+    for (let i = 0; i < functions[functionName].parameterNames.length; i++) {
+        let parameterName = functions[functionName].parameterNames[i];
         let argumentValue = getValue(argumentsList[i].trim());
 
-        declaredVariables[lookupParameterName] = true;
-        variables[lookupParameterName] = argumentValue;
+        declaredVariables[parameterName] = true;
+        variables[parameterName] = argumentValue;
     }
 
-    let functionLine = functions[functionLookupName].startLine + 1;
-    let functionEnd = functions[functionLookupName].endLine;
+    let functionLine = functions[functionName].startLine + 1;
+    let functionEnd = functions[functionName].endLine;
 
     while (functionLine < functionEnd && !hasError) {
         let line = lines[functionLine].trim();
@@ -998,41 +983,29 @@ function getValue(value) {
         let inside = getBracketContents(value);
         let parts = splitByCommas(inside);
 
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-
-        return Math.floor(left / right);
+        return Math.floor(getValue(parts[0].trim()) / getValue(parts[1].trim()));
     }
 
     if (value.startsWith("MOD(") && value.endsWith(")")) {
         let inside = getBracketContents(value);
         let parts = splitByCommas(inside);
 
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-
-        return left % right;
+        return getValue(parts[0].trim()) % getValue(parts[1].trim());
     }
 
     if (value.startsWith("LENGTH(") && value.endsWith(")")) {
         let inside = value.replace("LENGTH(", "").slice(0, -1).trim();
-        let text = getValue(inside);
-
-        return text.length;
+        return getValue(inside).length;
     }
 
     if (value.startsWith("UCASE(") && value.endsWith(")")) {
         let inside = value.replace("UCASE(", "").slice(0, -1).trim();
-        let text = getValue(inside);
-
-        return String(text).toUpperCase();
+        return String(getValue(inside)).toUpperCase();
     }
 
     if (value.startsWith("LCASE(") && value.endsWith(")")) {
         let inside = value.replace("LCASE(", "").slice(0, -1).trim();
-        let text = getValue(inside);
-
-        return String(text).toLowerCase();
+        return String(getValue(inside)).toLowerCase();
     }
 
     if (value.startsWith("SUBSTRING(") && value.endsWith(")")) {
@@ -1054,7 +1027,6 @@ function getValue(value) {
         }
 
         let parts = splitByCommas(inside);
-
         let min = getValue(parts[0].trim());
         let max = getValue(parts[1].trim());
 
@@ -1078,9 +1050,7 @@ function getValue(value) {
     }
 
     if (value.endsWith(")") && value.includes("(")) {
-            let functionName = normaliseName(
-        value.substring(0, value.indexOf("(")).trim()
-    );
+        let functionName = value.substring(0, value.indexOf("(")).trim();
         let argumentText = getBracketContents(value);
 
         if (functions[functionName] !== undefined) {
@@ -1096,94 +1066,67 @@ function getValue(value) {
 
     if (value.includes(">=")) {
         let parts = value.split(">=");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left >= right;
+        return getValue(parts[0].trim()) >= getValue(parts[1].trim());
     }
 
     if (value.includes("<=")) {
         let parts = value.split("<=");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left <= right;
+        return getValue(parts[0].trim()) <= getValue(parts[1].trim());
     }
 
     if (value.includes("<>")) {
         let parts = value.split("<>");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left !== right;
+        return getValue(parts[0].trim()) !== getValue(parts[1].trim());
     }
 
     if (value.includes("=")) {
         let parts = value.split("=");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left === right;
+        return getValue(parts[0].trim()) === getValue(parts[1].trim());
     }
 
     if (value.includes(">")) {
         let parts = value.split(">");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left > right;
+        return getValue(parts[0].trim()) > getValue(parts[1].trim());
     }
 
     if (value.includes("<")) {
         let parts = value.split("<");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left < right;
+        return getValue(parts[0].trim()) < getValue(parts[1].trim());
     }
 
     if (value.includes(" MOD ")) {
         let parts = value.split(" MOD ");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left % right;
+        return getValue(parts[0].trim()) % getValue(parts[1].trim());
     }
 
     if (value.includes(" DIV ")) {
         let parts = value.split(" DIV ");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return Math.floor(left / right);
+        return Math.floor(getValue(parts[0].trim()) / getValue(parts[1].trim()));
     }
 
     if (value.includes("+")) {
         let parts = value.split("+");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left + right;
+        return getValue(parts[0].trim()) + getValue(parts[1].trim());
     }
 
     if (value.includes("-")) {
         let parts = value.split("-");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left - right;
+        return getValue(parts[0].trim()) - getValue(parts[1].trim());
     }
 
     if (value.includes("*")) {
         let parts = value.split("*");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left * right;
+        return getValue(parts[0].trim()) * getValue(parts[1].trim());
     }
 
     if (value.includes("^")) {
-    let parts = value.split("^");
-    let left = getValue(parts[0].trim());
-    let right = getValue(parts[1].trim());
-
-    return Math.pow(left, right);
+        let parts = value.split("^");
+        return Math.pow(getValue(parts[0].trim()), getValue(parts[1].trim()));
     }
 
     if (value.includes("/")) {
         let parts = value.split("/");
-        let left = getValue(parts[0].trim());
-        let right = getValue(parts[1].trim());
-        return left / right;
+        return getValue(parts[0].trim()) / getValue(parts[1].trim());
     }
 
     if (!isNaN(value)) {
@@ -1216,19 +1159,17 @@ function getValue(value) {
         }
     }
 
-        let lookupName = normaliseName(value);
+    if (constants[value] !== undefined) {
+        return constants[value];
+    }
 
-        if (constants[lookupName] !== undefined) {
-            return constants[lookupName];
-        }
+    if (declaredVariables[value] === undefined) {
+        showError("Variable " + value + " has not been declared");
+        return undefined;
+    }
 
-        if (declaredVariables[lookupName] === undefined) {
-            showError("Variable " + value + " has not been declared");
-            return undefined;
-        }
-
-        return variables[lookupName];
-        }
+    return variables[value];
+}
 
 
 function skipToEndif() {
