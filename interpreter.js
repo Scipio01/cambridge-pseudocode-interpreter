@@ -660,7 +660,14 @@ function runLine(line) {
         return;
     }
 
-    if (line.includes(":")) {
+    if (
+        containsColonOutsideQuotes(line) &&
+        !line.startsWith("OUTPUT") &&
+        !line.startsWith("DECLARE") &&
+        !line.startsWith("CONSTANT")
+    )
+    
+    {
         let parts = line.split(":");
         let command = parts.slice(1).join(":").trim();
 
@@ -1298,6 +1305,27 @@ function getValue(value) {
     }
 
     return variables[value];
+}
+
+function containsColonOutsideQuotes(text) {
+    let insideDoubleQuotes = false;
+    let insideSingleQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === '"' && !insideSingleQuotes) {
+            insideDoubleQuotes = !insideDoubleQuotes;
+        }
+
+        if (text[i] === "'" && !insideDoubleQuotes) {
+            insideSingleQuotes = !insideSingleQuotes;
+        }
+
+        if (text[i] === ":" && !insideDoubleQuotes && !insideSingleQuotes) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
