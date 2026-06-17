@@ -8,6 +8,7 @@ let callStack = [];
 let declaredVariables = {};
 let hasError = false;
 let constants = {};
+let variableTypes = {};
 
 function normaliseName(name) {
     return name.trim().toUpperCase();
@@ -67,6 +68,7 @@ function validateProgram() {
                 }
 
                 declaredVariables[variableName] = true;
+                variableTypes[variableName] = dataType;
             }
 
             if (dataType.includes("ARRAY")) {
@@ -352,6 +354,7 @@ function runCode() {
     callStack = [];
     declaredVariables = {};
     hasError = false;
+    variableTypes = {};
 
     document.getElementById("output").textContent = "";
 
@@ -468,6 +471,46 @@ function runCode() {
 
 function runLine(line) {
     if (line === "") return;
+
+    function valueMatchesType(value, expectedType, variableName) {
+        if (expectedType === undefined) {
+            return true;
+        }
+
+        if (expectedType.includes("ARRAY") && expectedType.includes("OF")) {
+            expectedType = expectedType.split("OF")[1].trim();
+        }
+
+        if (expectedType === "INTEGER") {
+            if (typeof value !== "number" || !Number.isInteger(value)) {
+                showError("Variable " + variableName + " must be an INTEGER");
+                return false;
+            }
+        }
+
+        if (expectedType === "REAL") {
+            if (typeof value !== "number") {
+                showError("Variable " + variableName + " must be a REAL");
+                return false;
+            }
+        }
+
+        if (expectedType === "STRING") {
+            if (typeof value !== "string") {
+                showError("Variable " + variableName + " must be a STRING");
+                return false;
+            }
+        }
+
+        if (expectedType === "BOOLEAN") {
+            if (typeof value !== "boolean") {
+                showError("Variable " + variableName + " must be a BOOLEAN");
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     if (line === "THEN") {
         return;
@@ -781,13 +824,44 @@ function runLine(line) {
         }
 
         let userInput = prompt("Enter value for " + variableName);
+        let declaredType = variableTypes[variableName];
 
-        if (!isNaN(userInput)) {
+        if (declaredType === "INTEGER") {
+            if (userInput === null || userInput.trim() === "" || isNaN(userInput) || !Number.isInteger(Number(userInput))) {
+                showError("Variable " + variableName + " must be an INTEGER");
+                return;
+            }
+
             variables[variableName] = Number(userInput);
-        } else {
-            variables[variableName] = userInput;
+            return;
         }
 
+        if (declaredType === "REAL") {
+            if (
+                userInput === null ||
+                userInput.trim() === "" ||
+                isNaN(userInput) ||
+                !userInput.includes(".")
+            ) {
+                showError("Variable " + variableName + " must be a REAL");
+                return;
+            }
+
+            variables[variableName] = Number(userInput);
+            return;
+        }
+
+        if (declaredType === "BOOLEAN") {
+            if (userInput !== "TRUE" && userInput !== "FALSE") {
+                showError("Variable " + variableName + " must be TRUE or FALSE");
+                return;
+            }
+
+            variables[variableName] = (userInput === "TRUE");
+            return;
+        }
+
+        variables[variableName] = userInput;
         return;
     }
 
@@ -810,9 +884,16 @@ function runLine(line) {
                 variables[arrayName] = {};
             }
 
+            let result = getValue(value);
+            let expectedType = variableTypes[arrayName];
+
+            if (!valueMatchesType(result, expectedType, arrayName)) {
+                return;
+            }
+
             if (indexes.length === 1) {
                 let index = getValue(indexes[0].trim());
-                variables[arrayName][index] = getValue(value);
+                variables[arrayName][index] = result;
                 return;
             }
 
@@ -824,7 +905,7 @@ function runLine(line) {
                     variables[arrayName][row] = {};
                 }
 
-                variables[arrayName][row][column] = getValue(value);
+                variables[arrayName][row][column] = result;
                 return;
             }
         }
@@ -840,6 +921,12 @@ function runLine(line) {
         }
 
         let result = getValue(value);
+        let expectedType = variableTypes[name];
+
+        if (!valueMatchesType(result, expectedType, name)) {
+            return;
+        }
+
         variables[name] = result;
         return;
     }
