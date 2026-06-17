@@ -624,7 +624,7 @@ function runLine(line) {
                 otherwiseLine = i;
             }
 
-            if (caseLine.includes(":") && !caseLine.startsWith("OTHERWISE")) {
+            if (containsColonOutsideQuotes(caseLine) && !caseLine.startsWith("OTHERWISE")) {
                 let parts = caseLine.split(":");
                 let testValue = getValue(parts[0].trim());
 
@@ -666,12 +666,33 @@ function runLine(line) {
         !line.startsWith("DECLARE") &&
         !line.startsWith("CONSTANT")
     )
-    
     {
         let parts = line.split(":");
         let command = parts.slice(1).join(":").trim();
 
         if (command !== "") {
+            let endCaseLine = currentLine;
+
+            while (endCaseLine < lines.length && lines[endCaseLine].trim() !== "ENDCASE") {
+                endCaseLine++;
+            }
+
+            if (command.startsWith("CALL")) {
+                currentLine = endCaseLine;
+                runLine(command);
+                return;
+            }
+
+            if (command.endsWith(")")) {
+                let procedureName = command.split("(")[0].trim();
+
+                if (procedures[procedureName] !== undefined) {
+                    currentLine = endCaseLine;
+                    runLine(command);
+                    return;
+                }
+            }
+
             runLine(command);
         }
 
